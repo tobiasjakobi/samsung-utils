@@ -139,6 +139,8 @@ int get_codec(char *str)
 		return V4L2_PIX_FMT_MPEG2;
 	} else if (strncasecmp("mpeg1", str, 5) == 0) {
 		return V4L2_PIX_FMT_MPEG1;
+	} else if (strncasecmp("vp8", str, 5) == 0) {
+		return V4L2_PIX_FMT_VP8;
 	}
 	return 0;
 }
@@ -269,6 +271,9 @@ int parse_args(struct instance *i, int argc, char **argv)
 	case V4L2_PIX_FMT_MPEG1:
 	case V4L2_PIX_FMT_MPEG2:
 		i->parser.func = parse_mpeg2_stream;
+		break;
+	case V4L2_PIX_FMT_VP8:
+		i->parser.func = parse_vp8_stream;
 		break;
 	}
 

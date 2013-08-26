@@ -516,3 +516,40 @@ int parse_mpeg2_stream(
 	return frame_finished;
 }
 
+// IVF is a simple file format that transports raw VP8 data.
+int parse_vp8_stream (
+	struct mfc_parser_context *ctx,
+	char* in, int in_size, char* out, int out_size,
+	int *consumed, int *frame_size, char get_head)
+{
+    unsigned int index = 0;
+    unsigned int framesize;
+
+    if ((in[index] == 0x44) && (in[index + 1] == 0x4B) && (in[index + 2] == 0x49) && (in[index + 3] == 0x46))   // 444B4946 : DKIF
+    {
+        // IVF header
+        index += 4; //bytes 0-3    signature: 'DKIF'
+        index += 2; // plus bytes 4-5    version (should be 0)
+        index += 2; // plus bytes 6-7    length of header in bytes
+        index += 4; // plus bytes 8-11   codec FourCC (e.g., 'VP80')
+        index += 2; // plus bytes 12-13  width in pixels
+        index += 2; // plus bytes 14-15  height in pixels
+        index += 4; // plus bytes 16-19  frame rate
+        index += 4; // plus bytes 20-23  time scale
+        index += 4; // plus bytes 24-27  number of frames in file
+        index += 4; // plus bytes 28-31  unused
+    }
+    framesize = (in[index + 2] << 16) | (in[index + 1] << 8) | in[index];
+    index += 4; //bytes 0-3    size of frame in bytes (not including the 12-byte header)
+    index += 8; // plus bytes 4-11   64-bit presentation timestamp
+
+    memcpy(out, in + index, framesize);
+    *frame_size = framesize;
+    if(get_head==1)
+	*consumed =0;
+    else
+	*consumed = index+framesize;
+    printf(" frame_size = %d, consumed = %d\n",*frame_size, *consumed);
+
+    return 1;
+}
