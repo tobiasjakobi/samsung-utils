@@ -129,6 +129,8 @@ int dequeue_capture(struct instance *i, int *n, int *finished)
 	if (mfc_dec_dequeue_buf(i, &qbuf))
 		return -1;
 
+	dbg("Dequeued MFC sequence: %d\n", qbuf.sequence);
+
 	*finished = qbuf.m.planes[0].bytesused == 0;
 
 	*n = qbuf.index;
