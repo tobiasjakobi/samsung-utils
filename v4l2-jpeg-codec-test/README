@@ -1,0 +1,37 @@
+/*
+ * JPEG codec encoding example application
+ * Jacek Anaszewski <j.anaszewski@samsung.com>
+ *
+ * Copyright 2011 - 2013 Samsung Electronics Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
+The run_fmt_test.sh script decodes the input JPEG file to raw format and
+encodes the raw file to the JPEG format. This procedure is repeated for
+all the formats supported by the driver.
+
+Build
+-----
+
+1. Install kernel headers, for details see
+https://www.kernel.org/doc/Documentation/make/headers_install.txt
+E.g., in kernel root directory:
+  make headers_install ARCH=arm INSTALL_HDR_PATH=~/rootdir
+
+2. Build the application, e.g.
+  make TARGETROOT=~/rootdir
+
+The arguments required by the script:
+ - name of the JPEG file to be decoded
