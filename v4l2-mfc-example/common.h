@@ -123,6 +123,7 @@ struct instance {
 		/* Semaphores are used to synchronise FIMC thread with
 		 * the MFC thread */
 		sem_t done;
+		char enabled;
 	} fimc;
 
 	/* MFC related parameters */

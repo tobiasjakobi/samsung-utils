@@ -205,9 +205,11 @@ void *mfc_thread_func(void *args)
 		if (i->mfc.cap_buf_queued < i->mfc.cap_buf_cnt_min) {
 			/* sem_wait - wait until there is a buffer returned from
 			 * fimc */
-			dbg("Before fimc.done");
-			sem_wait(&i->fimc.done);
-			dbg("After fimc.done");
+			if (i->fimc.enabled) {
+				dbg("Before fimc.done");
+				sem_wait(&i->fimc.done);
+				dbg("After fimc.done");
+			}
 
 			n = 0;
 			while (n < i->mfc.cap_buf_cnt &&
@@ -237,9 +239,11 @@ void *mfc_thread_func(void *args)
 			if (n < i->mfc.cap_buf_cnt) {
 				/* sem_wait - we already found a buffer to queue
 				 * so no waiting */
-				dbg("Before fimc.done");
-				sem_wait(&i->fimc.done);
-				dbg("After fimc.done");
+				if (i->fimc.enabled) {
+					dbg("Before fimc.done");
+					sem_wait(&i->fimc.done);
+					dbg("After fimc.done");
+				}
 
 				/* Can queue a buffer */
 				mfc_dec_queue_buf_cap(i, n);
@@ -263,12 +267,17 @@ void *mfc_thread_func(void *args)
 				break;
 			}
 
-			/* Pass to the FIMC */
-			i->mfc.cap_buf_flag[n] = BUF_FIMC;
-			i->mfc.cap_buf_queued--;
-			queue_add(&i->fimc.queue, n);
+			if (i->fimc.enabled) {
+				/* Pass to the FIMC */
+				i->mfc.cap_buf_flag[n] = BUF_FIMC;
+				i->mfc.cap_buf_queued--;
 
-			sem_post(&i->fimc.todo);
+				queue_add(&i->fimc.queue, n);
+				sem_post(&i->fimc.todo);
+			} else {
+				i->mfc.cap_buf_flag[n] = BUF_FREE;
+				i->mfc.cap_buf_queued--;
+			}
 
 			continue;
 		}
@@ -404,7 +413,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fimc_open(&inst, inst.fimc.name)) {
+	if (inst.fimc.name && fimc_open(&inst, inst.fimc.name)) {
 		cleanup(&inst);
 		return 1;
 	}
@@ -439,17 +448,17 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fimc_setup_output_from_mfc(&inst)) {
+	if (inst.fimc.enabled && fimc_setup_output_from_mfc(&inst)) {
 		cleanup(&inst);
 		return 1;
 	}
 
-	if (fimc_setup_capture_from_fb(&inst)) {
+	if (inst.fimc.enabled && fimc_setup_capture_from_fb(&inst)) {
 		cleanup(&inst);
 		return 1;
 	}
 
-	if (fimc_set_crop(&inst, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+	if (inst.fimc.enabled && fimc_set_crop(&inst, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
 		inst.mfc.cap_crop_w, inst.mfc.cap_crop_h,
 		inst.mfc.cap_crop_left, inst.mfc.cap_crop_top)) {
 		cleanup(&inst);
@@ -496,7 +505,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (pthread_create(&fimc_thread, NULL, fimc_thread_func, &inst)) {
+	if (inst.fimc.enabled &&  pthread_create(&fimc_thread, NULL, fimc_thread_func, &inst)) {
 		cleanup(&inst);
 		return 1;
 	}
@@ -504,7 +513,8 @@ int main(int argc, char **argv)
 
 	pthread_join(parser_thread, 0);
 	pthread_join(mfc_thread, 0);
-	pthread_join(fimc_thread, 0);
+	if (inst.fimc.enabled)
+		pthread_join(fimc_thread, 0);
 
 	dbg("Threads have finished");
 

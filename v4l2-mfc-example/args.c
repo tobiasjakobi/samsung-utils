@@ -33,7 +33,7 @@ void print_usage(char *name)
 {
 	// "d:f:i:m:c:V"
 	printf("Usage:\n");
-	printf("\t./%s\n", name);
+	printf("\t%s\n", name);
 	printf("\t-c <codec> - The codec of the encoded stream\n");
 	printf("\t\t     Available codecs: mpeg4, h264\n");
 	printf("\t-d <device>  - Frame buffer device (e.g. /dev/fb0)\n");
@@ -85,6 +85,7 @@ int parse_args(struct instance *i, int argc, char **argv)
 			break;
 		case 'f':
 			i->fimc.name = optarg;
+			i->fimc.enabled = 1;
 			break;
 		case 'i':
 			i->in.name = optarg;
@@ -101,8 +102,8 @@ int parse_args(struct instance *i, int argc, char **argv)
 		}
 	}
 
-	if (!i->in.name || !i->fb.name || !i->fimc.name || !i->mfc.name) {
-		err("The following arguments are required: -d -f -i -m -c");
+	if (!i->in.name || !i->fb.name || !i->mfc.name) {
+		err("The following arguments are required: -d -i -m -c");
 		return -1;
 	}
 
