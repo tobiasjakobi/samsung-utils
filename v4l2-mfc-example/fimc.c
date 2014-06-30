@@ -152,7 +152,7 @@ int fimc_setup_output_from_mfc(struct instance *i)
 	return 0;
 }
 
-int fimc_setup_capture_from_fb(struct instance *i)
+int fimc_setup_capture(struct instance *i)
 {
 	struct v4l2_plane_pix_format planes[MFC_OUT_PLANES];
 	struct v4l2_requestbuffers reqbuf;
@@ -160,10 +160,10 @@ int fimc_setup_capture_from_fb(struct instance *i)
 	int ret;
 
 	memzero(planes);
-	planes[0].sizeimage = i->fb.stride * i->fb.height;
-	planes[0].bytesperline = i->fb.stride;
+	planes[0].sizeimage = i->fimc.stride * i->fimc.height;
+	planes[0].bytesperline = i->fimc.stride;
 
-	switch (i->fb.bpp) {
+	switch (i->fimc.bpp) {
 	case 16:
 		fmt = V4L2_PIX_FMT_RGB565;
 		break;
@@ -171,18 +171,18 @@ int fimc_setup_capture_from_fb(struct instance *i)
 		fmt = V4L2_PIX_FMT_RGB32;
 		break;
 	default:
-		err("Framebuffer format in not recognized. Bpp=%d", i->fb.bpp);
+		err("Framebuffer format in not recognized. Bpp=%d", i->fimc.bpp);
 		return -1;
 	}
 
-	ret = fimc_sfmt(i, i->fb.width, i->fb.height,
+	ret = fimc_sfmt(i, i->fimc.width, i->fimc.height,
 		V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, fmt, 1, planes);
 
 	if (ret)
 		return -1;
 
 	memzero(reqbuf);
-	reqbuf.count = i->fb.buffers;
+	reqbuf.count = i->fimc.buffers;
 	reqbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	reqbuf.memory = V4L2_MEMORY_USERPTR;
 
@@ -249,7 +249,7 @@ int fimc_dec_queue_buf_out_from_mfc(struct instance *i, int n)
 	return 0;
 }
 
-int fimc_dec_queue_buf_cap_from_fb(struct instance *i, int n)
+int fimc_dec_queue_buf_cap(struct instance *i, int n)
 {
 	struct v4l2_buffer buf;
 	struct v4l2_plane planes[FIMC_CAP_PLANES];
@@ -263,9 +263,9 @@ int fimc_dec_queue_buf_cap_from_fb(struct instance *i, int n)
 	buf.m.planes = planes;
 	buf.length = FIMC_CAP_PLANES;
 
-	buf.m.planes[0].bytesused = i->fb.size;
-	buf.m.planes[0].length = i->fb.size;
-	buf.m.planes[0].m.userptr = (unsigned long)i->fb.p[n];
+	buf.m.planes[0].bytesused = i->fimc.size;
+	buf.m.planes[0].length = i->fimc.size;
+	buf.m.planes[0].m.userptr = (unsigned long)i->fimc.p[n];
 
 	ret = ioctl(i->fimc.fd, VIDIOC_QBUF, &buf);
 

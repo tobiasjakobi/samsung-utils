@@ -36,6 +36,14 @@
 /* When DEBUG is defined debug messages are printed on the screen.
  * Otherwise only error messages are displayed. */
 #define DEBUG
+/* Remove #define DRM will disable DRM support */
+#define DRM
+
+#ifdef DRM
+#include <xf86drm.h>
+#include <xf86drmMode.h>
+#include <exynos_drm.h>
+#endif
 
 #ifdef ADD_DETAILS
 #define err(msg, ...) \
@@ -76,7 +84,7 @@
 #define FIMC_CAP_PLANES 1
 /* Maximum number of frame buffers - used for double buffering and
  * vsyns synchronisation */
-#define FB_MAX_BUFS 2
+#define MAX_BUFS 2
 
 /* The buffer is free to use by MFC */
 #define BUF_FREE 0
@@ -96,12 +104,35 @@ struct instance {
 		int offs;
 	} in;
 
+	/* DRM related parameters */
+	struct {
+		char *name;
+		int fd;
+
+		int fb[MAX_BUFS];
+		int crtc[MAX_BUFS];
+
+		int width;
+		int height;
+
+		char *p[MAX_BUFS];
+
+		unsigned int conn_id;
+		unsigned int crtc_id;
+#ifdef DRM
+		struct drm_exynos_gem_create gem[MAX_BUFS];
+		struct drm_exynos_gem_mmap mmap[MAX_BUFS];
+		drmModeRes *resources;
+#endif
+		char enabled;
+
+	} drm;
+
 	/* Frame buffer related parameters */
 	struct {
 		char *name;
 		int fd;
-		char *p[FB_MAX_BUFS];
-		int cur_buf;
+		char *p[MAX_BUFS];
 		int buffers;
 		int width;
 		int height;
@@ -111,7 +142,7 @@ struct instance {
 		int stride;
 		int size;
 		int full_size;
-		int double_buf;
+		char enabled;
 	} fb;
 
 	/* FIMC related parameter */
@@ -124,6 +155,16 @@ struct instance {
 		 * the MFC thread */
 		sem_t done;
 		char enabled;
+
+		int cur_buf;
+		int double_buf;
+		int size;
+		int buffers;
+		int bpp;
+		int width;
+		int stride;
+		int height;
+		char *p[MAX_BUFS];
 	} fimc;
 
 	/* MFC related parameters */

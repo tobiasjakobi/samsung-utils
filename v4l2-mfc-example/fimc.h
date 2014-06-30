@@ -36,13 +36,13 @@ int	fimc_sfmt(struct instance *i, int width, int height,
 /* Setup OUTPUT queue of FIMC basing on the configuration of MFC */
 int	fimc_setup_output_from_mfc(struct instance *i);
 /* Setup CAPTURE queue of FIMC basing on the configuration of the frame buffer */
-int	fimc_setup_capture_from_fb(struct instance *i);
+int	fimc_setup_capture(struct instance *i);
 /* Control streaming status */
 int	fimc_stream(struct instance *i, enum v4l2_buf_type type, int status);
 /* Convenience function for queueing buffers from MFC */
 int	fimc_dec_queue_buf_out_from_mfc(struct instance *i, int n);
 /* Convenience function for queueing buffers from  frame buffer*/
-int	fimc_dec_queue_buf_cap_from_fb(struct instance *i, int n);
+int	fimc_dec_queue_buf_cap(struct instance *i, int n);
 /* Dequeue buffer */
 int	fimc_dec_dequeue_buf(struct instance *i, int *n, int nplanes, int type);
 /* Dequeue buffer from the CAPTURE queue. The argument *n is set to the index of

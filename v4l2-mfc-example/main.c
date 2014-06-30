@@ -33,6 +33,7 @@
 #include "fileops.h"
 #include "mfc.h"
 #include "parser.h"
+#include "drm.h"
 
 /* This is the size of the buffer for the compressed stream.
  * It limits the maximum compressed frame size. */
@@ -55,7 +56,10 @@ void cleanup(struct instance *i)
 		fb_close(i);
 	if (i->in.fd)
 		input_close(i);
-	queue_free(&i->fimc.queue);
+	if (i->drm.fd)
+		drm_close(i);
+	if (i->fimc.enabled)
+		queue_free(&i->fimc.queue);
 }
 
 int extract_and_process_header(struct instance *i)
@@ -287,6 +291,14 @@ void *mfc_thread_func(void *args)
 	return 0;
 }
 
+void
+page_flip_handler(int fd, unsigned int frame,
+                  unsigned int sec, unsigned int usec, void *data)
+{
+	printf("Handled %d %d %d\n", frame, sec, usec);	
+
+}
+
 /* This thread handles FIMC processing and optionally frame buffer
  * switching and synchronisation to the vsync of frame buffer. */
 void *fimc_thread_func(void *args)
@@ -295,6 +307,8 @@ void *fimc_thread_func(void *args)
 	static int first_run = 1;
 	struct instance *i = (struct instance *)args;
 	int n, tmp;
+
+	i->fimc.cur_buf = 0;
 
 	while (!i->error && (!i->finish ||
 		(i->finish && !queue_empty(&i->fimc.queue))
@@ -324,17 +338,11 @@ void *fimc_thread_func(void *args)
 			break;
 		}
 
-		i->fb.cur_buf = 0;
-
-		if (i->fb.double_buf) {
-			i->fb.cur_buf++;
-			i->fb.cur_buf %= i->fb.buffers;
-		}
-
-		if (fimc_dec_queue_buf_cap_from_fb(i, i->fb.cur_buf)) {
+		if (fimc_dec_queue_buf_cap(i, i->fimc.cur_buf)) {
 			i->error = 1;
 			break;
 		}
+
 
 		if (first_run) {
 			/* Since our fabulous V4L2 framework enforces that at
@@ -369,9 +377,47 @@ void *fimc_thread_func(void *args)
 			break;
 		}
 
-		if (i->fb.double_buf) {
-			fb_set_virt_y_offset(i, i->fb.height);
+		if (i->fimc.double_buf && i->fb.enabled) {
+			fb_set_virt_y_offset(i, i->fimc.cur_buf * i->fb.height);
 			fb_wait_for_vsync(i);
+		}
+
+		if (i->fimc.double_buf && i->drm.enabled) {
+			drmModePageFlip(i->drm.fd, i->drm.crtc[i->fimc.cur_buf],
+				i->drm.fb[i->fimc.cur_buf],
+				DRM_MODE_PAGE_FLIP_EVENT, 0);
+
+			while (1) {
+				struct timeval timeout = { .tv_sec = 3, .tv_usec = 0 };
+				fd_set fds;
+				int ret;
+				drmEventContext evctx;
+
+				memset(&evctx, 0, sizeof evctx);
+				evctx.version = DRM_EVENT_CONTEXT_VERSION;
+				evctx.vblank_handler = NULL;
+				evctx.page_flip_handler = page_flip_handler;
+
+				FD_ZERO(&fds);
+				FD_SET(0, &fds);
+				FD_SET(i->drm.fd, &fds);
+				ret = select(i->drm.fd + 1, &fds, NULL, NULL, &timeout);
+
+				if (ret <= 0)
+					continue;
+				else if (FD_ISSET(0, &fds))
+					break;
+
+				drmHandleEvent(i->drm.fd, &evctx);
+				break;
+
+			}
+
+		}
+
+		if (i->fimc.double_buf) {
+			i->fimc.cur_buf++;
+			i->fimc.cur_buf %= i->fimc.buffers;
 		}
 
 		i->mfc.cap_buf_flag[n] = BUF_FREE;
@@ -393,7 +439,7 @@ int main(int argc, char **argv)
 
 	printf("V4L2 Codec decoding example application\n");
 	printf("Kamil Debski <k.debski@samsung.com>\n");
-	printf("Copyright 2012 Samsung Electronics Co., Ltd.\n\n");
+	printf("Copyright 2012-2014 Samsung Electronics Co., Ltd.\n\n");
 
 	if (parse_args(&inst, argc, argv)) {
 		print_usage(argv[0]);
@@ -408,12 +454,17 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fb_open(&inst, inst.fb.name)) {
+	if (inst.fb.enabled && fb_open(&inst, inst.fb.name)) {
 		cleanup(&inst);
 		return 1;
 	}
 
-	if (inst.fimc.name && fimc_open(&inst, inst.fimc.name)) {
+	if (inst.drm.enabled && drm_open(&inst, inst.drm.name)) {
+		cleanup(&inst);
+		return 1;
+	}
+
+	if (inst.fimc.enabled && fimc_open(&inst, inst.fimc.name)) {
 		cleanup(&inst);
 		return 1;
 	}
@@ -453,7 +504,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (inst.fimc.enabled && fimc_setup_capture_from_fb(&inst)) {
+	if (inst.fimc.enabled && fimc_setup_capture(&inst)) {
 		cleanup(&inst);
 		return 1;
 	}

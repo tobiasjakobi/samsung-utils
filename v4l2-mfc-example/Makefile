@@ -19,20 +19,25 @@
 # Toolchain path
 TCPATH = arm-linux-gnueabi-
 #TCPATH =
-KERNELHEADERS = /home/kamil/praca/w1-party/kernel/headers/include
+KERNELHEADERS = -I/home/kamil/praca/w1-party/kernel/headers/include
+DRMHEADERS =	-I/home/kamil/praca/drm/dst/include/libdrm \
+		-I/home/kamil/praca/drm/dst/include/exynos \
+		-I/home/kamil/praca/drm/dst/include
+LIBRARIES =	-L/home/kamil/praca/drm/dst/lib/
+LIBS =		-ldrm
 
 CC = ${TCPATH}gcc
 AR = "${TCPATH}ar rc"
 AR2 = ${TCPATH}ranlib make -j4
 
 
-INCLUDES = -I$(KERNELHEADERS)
+INCLUDES = $(KERNELHEADERS) $(DRMHEADERS)
 
 #INCLUDES = -I$(KERNELHEADERS)/include
 
 #-I$(TARGETROOT)/usr/include/linux
 
-SOURCES = main.c fileops.c args.c parser.c fb.c fimc.c mfc.c queue.c
+SOURCES = main.c fileops.c args.c parser.c fb.c fimc.c mfc.c queue.c drm.c
 OBJECTS := $(SOURCES:.c=.o)
 EXEC = v4l2_decode
 CFLAGS = -Wall -g -DS5PC1XX_FIMC -lm
@@ -44,7 +49,7 @@ all: $(EXEC)
 	$(CC) -c $(CFLAGS) $(INCLUDES) $<
 
 $(EXEC): $(OBJECTS)
-	$(CC) $(CFLAGS) -o $(EXEC) $(OBJECTS) -pthread
+	$(CC) $(CFLAGS) -o $(EXEC) $(OBJECTS) $(LIBRARIES) $(LIBS) -pthread
 
 clean:
 	rm -f *.o $(EXEC)

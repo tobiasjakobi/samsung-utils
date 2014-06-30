@@ -20,6 +20,7 @@
  *
  */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -40,9 +41,11 @@ void print_usage(char *name)
 	printf("\t-f <device> - FIMC device (e.g. /dev/video4)\n");
 	printf("\t-i <file> - Input file name\n");
 	printf("\t-m <device> - MFC device (e.g. /dev/video8)\n");
+	printf("\t-D <module>:<crtc>:<conn> - DRM module (e.g. exynos:4:17)\n");
 	printf("\t-V - synchronise to vsync\n");
-	//printf("\t- <device> - \n");
-	printf("\tp2\n");
+	printf("\t\n");
+	printf("\tIf DRM or Frame buffer is used then FIMC should be suppplied.\n");
+	printf("\tOnly one of the following Frame Buffer, DRM can be used at a time.\n");
 	printf("\n");
 }
 
@@ -71,17 +74,19 @@ int get_codec(char *str)
 
 int parse_args(struct instance *i, int argc, char **argv)
 {
+	char *tmp;
 	int c;
 
 	init_to_defaults(i);
 
-	while ((c = getopt(argc, argv, "c:d:f:i:m:V")) != -1) {
+	while ((c = getopt(argc, argv, "c:d:f:i:m:VD:")) != -1) {
 		switch (c) {
 		case 'c':
 			i->parser.codec = get_codec(optarg);
 			break;
 		case 'd':
 			i->fb.name = optarg;
+			i->fb.enabled = 1;
 			break;
 		case 'f':
 			i->fimc.name = optarg;
@@ -94,7 +99,38 @@ int parse_args(struct instance *i, int argc, char **argv)
 			i->mfc.name = optarg;
 			break;
 		case 'V':
-			i->fb.double_buf = 1;
+			i->fimc.double_buf = 1;
+			break;
+		case 'D':
+			/* Name */
+			tmp = optarg;
+			while (*tmp && *tmp != ':')
+				tmp++;
+			if (*tmp) {
+				i->drm.name = optarg;
+				*tmp = 0;
+				dbg("DRM module name: %s", optarg);
+				optarg = ++tmp;
+			} else {
+				break;
+			}
+			/* Crtc */
+			while (*tmp && *tmp != ':')
+				tmp++;
+			if (*tmp) {
+				*tmp = 0;
+				i->drm.crtc_id = atoi(optarg);
+				dbg("crtc: %d (%s)", i->drm.crtc_id, optarg);
+				optarg = ++tmp;
+			} else {
+				break;
+			}
+			/* Crtc */
+			while (*tmp && *tmp != ':')
+				tmp++;
+			i->drm.conn_id = atoi(optarg);
+			dbg("conn: %d (%s)", i->drm.conn_id, optarg);
+			i->drm.enabled = 1;
 			break;
 		default:
 			err("Bad argument");
@@ -102,14 +138,23 @@ int parse_args(struct instance *i, int argc, char **argv)
 		}
 	}
 
-	if (!i->in.name || !i->fb.name || !i->mfc.name) {
-		err("The following arguments are required: -d -i -m -c");
-		return -1;
-	}
-
 	if (!i->parser.codec) {
 		err("Unknown or not set codec (-c)");
 		return -1;
+	}
+	if (!i->in.name || !i->mfc.name) {
+		err("The following arguments are required: -i -m -c");
+		return -1;
+	}
+	if (i->fimc.enabled) {
+		if (i->drm.enabled) {
+			dbg("Using DRM for display");
+		} else if (i->fb.enabled) {
+			dbg("Using FrameBuffer for display\n");
+		} else {
+			err("When using FIMC a framewbuffer or DRM has to be used\n");
+			return -1;
+		}
 	}
 
 	switch (i->parser.codec) {

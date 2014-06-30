@@ -52,24 +52,28 @@ int fb_open(struct instance *i, char *name)
 	dbg("Virtual resolution: vxres=%d vyres=%d",
 		fbinfo.xres_virtual, fbinfo.yres_virtual);
 
-	i->fb.width		= fbinfo.xres;
-	i->fb.height		= fbinfo.yres;
+	i->fimc.width	= i->fb.width		= fbinfo.xres;
+	i->fimc.height	= i->fb.height		= fbinfo.yres;
 	i->fb.virt_width	= fbinfo.xres_virtual;
 	i->fb.virt_height	= fbinfo.yres_virtual;
-	i->fb.bpp		= fbinfo.bits_per_pixel;
-	i->fb.stride		= i->fb.virt_width * i->fb.bpp / 8;
-	i->fb.full_size		= i->fb.stride * i->fb.virt_height;
-	i->fb.size		= i->fb.stride * fbinfo.yres;
+	i->fimc.bpp	= i->fb.bpp		= fbinfo.bits_per_pixel;
+	i->fimc.stride	= i->fb.stride		= i->fb.virt_width * i->fb.bpp / 8;
+	i->fb.full_size	= i->fb.stride * i->fb.virt_height;
+	i->fimc.size	= i->fb.size		= i->fb.stride * fbinfo.yres;
 
 	i->fb.p[0] = mmap(0, i->fb.full_size, PROT_WRITE | PROT_READ,
 				MAP_SHARED, i->fb.fd, 0);
 
 	i->fb.buffers = 1;
 
-	if (i->fb.double_buf) {
+	if (i->fimc.double_buf) {
 		i->fb.p[1] = i->fb.p[0] + i->fb.size;
 		i->fb.buffers = 2;
 	}
+
+	i->fimc.buffers = i->fb.buffers;
+	i->fimc.p[0] = i->fb.p[0];
+	i->fimc.p[1] = i->fb.p[1];
 
 	return fb_set_virt_y_offset(i, 0);
 }
