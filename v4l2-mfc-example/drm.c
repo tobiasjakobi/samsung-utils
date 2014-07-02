@@ -78,13 +78,25 @@ int drm_open(struct instance *i, char *name)
 			return -1;
 		}
 		args.handle = i->drm.gem[n].handle;
-		i->drm.mmap[n].handle = i->drm.gem[n].handle;
-		i->drm.mmap[n].size = i->drm.gem[n].size;
-		ret = ioctl(i->drm.fd, DRM_IOCTL_EXYNOS_GEM_MMAP, &i->drm.mmap[n]);
-		if (ret < 0) {
-			ioctl(i->drm.fd, DRM_IOCTL_GEM_CLOSE, &args);
-			err("Failed to mmap gem");
-			return -1;
+
+		if (i->fimc.dmabuf) {
+			ret = drmPrimeHandleToFD(i->drm.fd, i->drm.gem[n].handle, DRM_CLOEXEC, &i->fimc.dbuf[n]);
+			if (ret < 0) {
+				ioctl(i->drm.fd, DRM_IOCTL_GEM_CLOSE, &args);
+				err("Failed to expbuf a gem object");
+				return -1;
+			}
+		} else {
+			i->drm.mmap[n].handle = i->drm.gem[n].handle;
+			i->drm.mmap[n].size = i->drm.gem[n].size;
+			ret = ioctl(i->drm.fd, DRM_IOCTL_EXYNOS_GEM_MMAP, &i->drm.mmap[n]);
+			if (ret < 0) {
+				ioctl(i->drm.fd, DRM_IOCTL_GEM_CLOSE, &args);
+				err("Failed to mmap gem");
+				return -1;
+			}
+			i->drm.p[n] = (char *)(unsigned int)i->drm.mmap[n].mapped;
+			i->fimc.p[n] = (char *)(unsigned int)i->drm.mmap[n].mapped;
 		}
 		ret = drmModeAddFB(i->drm.fd, i->drm.width, i->drm.height, 32,
 			32, 4 *  i->drm.width, i->drm.gem[n].handle, &fb_id);
@@ -96,8 +108,6 @@ int drm_open(struct instance *i, char *name)
 			return -1;
 		}
 		i->drm.fb[n] = fb_id;
-		i->drm.p[n] = (char *)(unsigned int)i->drm.mmap[n].mapped;
-		i->fimc.p[n] = (char *)(unsigned int)i->drm.mmap[n].mapped;
 	}
 
 	snprintf(mode, 32, "%dx%d", crtc->width, crtc->height);

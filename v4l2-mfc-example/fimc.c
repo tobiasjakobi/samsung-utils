@@ -139,7 +139,11 @@ int fimc_setup_output_from_mfc(struct instance *i)
 	memzero(reqbuf);
 	reqbuf.count = i->mfc.cap_buf_cnt;
 	reqbuf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-	reqbuf.memory = V4L2_MEMORY_USERPTR;
+	if (i->fimc.dmabuf) {
+		reqbuf.memory = V4L2_MEMORY_DMABUF;
+	} else {
+		reqbuf.memory = V4L2_MEMORY_USERPTR;
+	}
 
 	ret = ioctl(i->fimc.fd, VIDIOC_REQBUFS, &reqbuf);
 	if (ret) {
@@ -183,8 +187,12 @@ int fimc_setup_capture(struct instance *i)
 
 	memzero(reqbuf);
 	reqbuf.count = i->fimc.buffers;
+	dbg("reqbuf.count = %d", reqbuf.count);
 	reqbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	reqbuf.memory = V4L2_MEMORY_USERPTR;
+	if (i->fimc.dmabuf && i->drm.enabled)
+		reqbuf.memory = V4L2_MEMORY_DMABUF;
+	else
+		reqbuf.memory = V4L2_MEMORY_USERPTR;
 
 	ret = ioctl(i->fimc.fd, VIDIOC_REQBUFS, &reqbuf);
 	if (ret) {
@@ -224,18 +232,25 @@ int fimc_dec_queue_buf_out_from_mfc(struct instance *i, int n)
 	memzero(buf);
 	memzero(planes);
 	buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-	buf.memory = V4L2_MEMORY_USERPTR;
 	buf.index = n;
 	buf.m.planes = planes;
 	buf.length = MFC_CAP_PLANES;
 
 	buf.m.planes[0].bytesused = i->mfc.cap_buf_size[0];
 	buf.m.planes[0].length = i->mfc.cap_buf_size[0];
-	buf.m.planes[0].m.userptr = (unsigned long)i->mfc.cap_buf_addr[n][0];
 
 	buf.m.planes[1].bytesused = i->mfc.cap_buf_size[1];
 	buf.m.planes[1].length = i->mfc.cap_buf_size[1];
-	buf.m.planes[1].m.userptr = (unsigned long)i->mfc.cap_buf_addr[n][1];
+
+	if (i->fimc.dmabuf) {
+		buf.memory = V4L2_MEMORY_DMABUF;
+		buf.m.planes[0].m.fd = i->mfc.dbuf[n][0];
+		buf.m.planes[1].m.fd = i->mfc.dbuf[n][1];
+	} else {
+		buf.memory = V4L2_MEMORY_USERPTR;
+		buf.m.planes[0].m.userptr = (unsigned long)i->mfc.cap_buf_addr[n][0];
+		buf.m.planes[1].m.userptr = (unsigned long)i->mfc.cap_buf_addr[n][1];
+	}
 
 	ret = ioctl(i->fimc.fd, VIDIOC_QBUF, &buf);
 
@@ -258,19 +273,24 @@ int fimc_dec_queue_buf_cap(struct instance *i, int n)
 	memzero(buf);
 	memzero(planes);
 	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	buf.memory = V4L2_MEMORY_USERPTR;
 	buf.index = n;
 	buf.m.planes = planes;
 	buf.length = FIMC_CAP_PLANES;
 
 	buf.m.planes[0].bytesused = i->fimc.size;
 	buf.m.planes[0].length = i->fimc.size;
-	buf.m.planes[0].m.userptr = (unsigned long)i->fimc.p[n];
+	if (i->fimc.dmabuf && i->drm.enabled) {
+		buf.memory = V4L2_MEMORY_DMABUF;
+		buf.m.planes[0].m.fd = i->fimc.dbuf[n];
+	} else {
+		buf.memory = V4L2_MEMORY_USERPTR;
+		buf.m.planes[0].m.userptr = (unsigned long)i->fimc.p[n];
+	}
 
 	ret = ioctl(i->fimc.fd, VIDIOC_QBUF, &buf);
 
 	if (ret) {
-		err("Failed to queue buffer (index=%d) on OUTPUT", n);
+		err("Failed to queue buffer (index=%d) on CAPTURE", n);
 		return -1;
 	}
 

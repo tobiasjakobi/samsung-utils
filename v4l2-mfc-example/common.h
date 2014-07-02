@@ -165,6 +165,8 @@ struct instance {
 		int stride;
 		int height;
 		char *p[MAX_BUFS];
+		int dbuf[MAX_BUFS];
+		int dmabuf;
 	} fimc;
 
 	/* MFC related parameters */
@@ -193,6 +195,7 @@ struct instance {
 		char *cap_buf_addr[MFC_MAX_CAP_BUF][MFC_CAP_PLANES];
 		int cap_buf_flag[MFC_MAX_CAP_BUF];
 		int cap_buf_queued;
+		int dbuf[MFC_MAX_CAP_BUF][MFC_CAP_PLANES];
 	} mfc;
 
 	/* Parser related parameters */
