@@ -104,7 +104,14 @@ int fimc_sfmt(struct instance *i, int width, int height,
 		fmt.fmt.pix_mp.height != height ||
 		fmt.fmt.pix_mp.num_planes != num_planes ||
 		fmt.fmt.pix_mp.pixelformat != pix_fmt) {
-		err("Format was changed by FIMC so we abort operations");
+		err("Format was changed by FIMC so we abort operations\n"
+		    "This may happen around kernel 3.16 as the format supported by FIMC\n"
+		    "was changed.\n\n"
+		    "To fix this please change function fimc_setup_capture in fimc.c (around line 162)\n"
+		    "It should use V4L2_PIX_FMT_BGR32 for 3.16+ instead of V4L2_PIX_FMT_RGB32 used by 3.15-\n\n"
+		    "Please read patch: \"s5p-fimc: Changed RGB32 to BGR32\"\n"
+		    "\thttp://www.spinics.net/lists/linux-media/msg74953.html\n"
+		    "\thttps://patchwork.linuxtv.org/patch/23236/");
 		return -1;
 	}
 
@@ -172,7 +179,7 @@ int fimc_setup_capture(struct instance *i)
 		fmt = V4L2_PIX_FMT_RGB565;
 		break;
 	case 32:
-		fmt = V4L2_PIX_FMT_RGB32;
+		fmt = V4L2_PIX_FMT_BGR32;
 		break;
 	default:
 		err("Framebuffer format in not recognized. Bpp=%d", i->fimc.bpp);
