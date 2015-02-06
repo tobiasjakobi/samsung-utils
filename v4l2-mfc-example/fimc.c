@@ -113,9 +113,12 @@ int fimc_sfmt(struct instance *i, int width, int height,
 		    "Please read patch: \"s5p-fimc: Changed RGB32 to BGR32\"\n"
 		    "\thttp://www.spinics.net/lists/linux-media/msg74953.html\n"
 		    "\thttps://patchwork.linuxtv.org/patch/23236/");
-		return -1;
+		if (i->fimc.ignore_format_change) {
+			err("!!! IGNORING FORMAT CHANGE !!!");
+		} else {
+			return -1;
+		}
 	}
-
 
 	dbg("Successful SFMT on %s of FIMC (%dx%d)",
 			dbg_type[type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE],

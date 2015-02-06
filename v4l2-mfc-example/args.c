@@ -44,6 +44,7 @@ void print_usage(char *name)
 	printf("\t-D <module>:<crtc>:<conn> - DRM module (e.g. exynos:4:17)\n");
 	printf("\t-B - use DMABUF instead of userptr for sharing buffers\n");
 	printf("\t-V - synchronise to vsync\n");
+	printf("\t-X - ignore format change by FIMC\n");
 	printf("\t\n");
 	printf("\tIf DRM or Frame buffer is used then FIMC should be suppplied.\n");
 	printf("\tOnly one of the following Frame Buffer, DRM can be used at a time.\n");
@@ -80,7 +81,7 @@ int parse_args(struct instance *i, int argc, char **argv)
 
 	init_to_defaults(i);
 
-	while ((c = getopt(argc, argv, "c:d:f:i:m:VD:B")) != -1) {
+	while ((c = getopt(argc, argv, "c:d:f:i:m:VXD:B")) != -1) {
 		switch (c) {
 		case 'c':
 			i->parser.codec = get_codec(optarg);
@@ -101,6 +102,9 @@ int parse_args(struct instance *i, int argc, char **argv)
 			break;
 		case 'V':
 			i->fimc.double_buf = 1;
+			break;
+		case 'X':
+			i->fimc.ignore_format_change = 1;
 			break;
 		case 'B':
 			i->fimc.dmabuf = 1;

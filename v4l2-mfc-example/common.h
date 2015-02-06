@@ -167,6 +167,7 @@ struct instance {
 		char *p[MAX_BUFS];
 		int dbuf[MAX_BUFS];
 		int dmabuf;
+		char ignore_format_change;
 	} fimc;
 
 	/* MFC related parameters */
