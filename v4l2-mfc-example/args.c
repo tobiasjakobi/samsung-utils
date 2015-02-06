@@ -36,7 +36,7 @@ void print_usage(char *name)
 	printf("Usage:\n");
 	printf("\t%s\n", name);
 	printf("\t-c <codec> - The codec of the encoded stream\n");
-	printf("\t\t     Available codecs: mpeg4, h264\n");
+	printf("\t\t     Available codecs: h263, h264, mpeg1, mpeg2, mpeg4, xvid\n");
 	printf("\t-d <device>  - Frame buffer device (e.g. /dev/fb0)\n");
 	printf("\t-f <device> - FIMC device (e.g. /dev/video4)\n");
 	printf("\t-i <file> - Input file name\n");
