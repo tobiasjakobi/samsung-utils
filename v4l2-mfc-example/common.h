@@ -197,6 +197,7 @@ struct instance {
 		int cap_buf_flag[MFC_MAX_CAP_BUF];
 		int cap_buf_queued;
 		int dbuf[MFC_MAX_CAP_BUF][MFC_CAP_PLANES];
+		unsigned int cap_pixfmt;
 	} mfc;
 
 	/* Parser related parameters */

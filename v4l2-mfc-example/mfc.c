@@ -261,6 +261,7 @@ int mfc_dec_setup_capture(struct instance *i, int extra_buf)
 	}
 	i->mfc.cap_w = fmt.fmt.pix_mp.width;
 	i->mfc.cap_h = fmt.fmt.pix_mp.height;
+	i->mfc.cap_pixfmt = fmt.fmt.pix_mp.pixelformat;
 
 	i->mfc.cap_buf_size[0] = fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
 	i->mfc.cap_buf_size[1] = fmt.fmt.pix_mp.plane_fmt[1].sizeimage;

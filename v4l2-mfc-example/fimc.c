@@ -141,7 +141,7 @@ int fimc_setup_output_from_mfc(struct instance *i)
 	}
 
 	ret = fimc_sfmt(i, i->mfc.cap_w, i->mfc.cap_h,
-		V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_NV12MT,
+		V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, i->mfc.cap_pixfmt,
 		MFC_CAP_PLANES, planes);
 
 	if (ret)
