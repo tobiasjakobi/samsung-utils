@@ -4,7 +4,7 @@ by Kamil Debski <k.debski@samsung.com>
 ===========
 * License *
 ===========
-Copyright 2012 Samsung Electronics Co., Ltd.
+Copyright 2012 - 2015 Samsung Electronics Co., Ltd.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -87,6 +87,25 @@ To do this the application should queue an empty (bytesused = 0) buffer on
 OUTPUT after the end of stream has been detected and dequeue all remaining
 CAPTURE buffers have been dequeued. The first empty buffer signalises MFC that
 the end of stream has been reached and initializes decoding ending procedure.
+
+
+===========================
+* Building the application *
+===========================
+
+To build application you need to do few steps. You should download libdrm.
+If you use custom kernel you need to build headers for it.
+
+First you should define KERNELHEADERS_PREFIX and LIBDRM_PREFIX
+where will be kept the build output and headers needed by the application.
+Then you should export headers from your kernel using
+INSTALL_HDR_PATH=$KERNELHEADERS_PREFIX ARCH=arm make headers_install.
+When building libdrm you should enable --enable-exynos-experimental-api
+and define --prefix=$LIBDRM_PREFIX, and your custom kernel source
+--with-kernel-source=$KERNEL_DIR using configure.
+After this step enter v4l2-mfc-example directory and run make.
+If you have problems with toolchain and gcc check Makefile and TCPATH.
+You may need define own path to the toolchain.
 
 ===========================
 * Running the application *

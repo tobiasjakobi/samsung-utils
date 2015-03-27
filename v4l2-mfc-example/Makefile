@@ -1,7 +1,7 @@
 # V4L2 Codec decoding example application
 # Kamil Debski <k.debski@samsung.com>
 #
-# Copyright 2012 Samsung Electronics Co., Ltd.
+# Copyright 2012 - 2015 Samsung Electronics Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,19 +16,30 @@
 # limitations under the License.
 #
 
+
+
+ifeq ($(LIBDRM_PREFIX),)
+$(warning LIBDRM_PREFIX is not set, the build may fail due to lack of libdrm headers )
+endif
+
+ifeq ($(KERNELHEADERS_PREFIX),)
+$(warning KERNELHEADERS_PREFIX is not set, the build may fail due to lack of kernel headers)
+endif
+
 # Toolchain path
 TCPATH = arm-linux-gnueabi-
 #TCPATH =
-KERNELHEADERS = -I/home/kamil/praca/w1-party/kernel/headers/include
-DRMHEADERS =	-I/home/kamil/praca/drm/dst/include/libdrm \
-		-I/home/kamil/praca/drm/dst/include/exynos \
-		-I/home/kamil/praca/drm/dst/include
-LIBRARIES =	-L/home/kamil/praca/drm/dst/lib/
+KERNELHEADERS = -I$(KERNELHEADERS_PREFIX)
+DRMHEADERS =	-I$(LIBDRM_PREFIX)/include/ \
+		-I$(LIBDRM_PREFIX)/include/libdrm/ \
+		-I$(LIBDRM_PREFIX)/include/exynos \
+		-I./
+LIBRARIES =	-L$(LIBDRM_PREFIX)/lib/
 LIBS =		-ldrm
 
 CC = ${TCPATH}gcc
 AR = "${TCPATH}ar rc"
-AR2 = ${TCPATH}ranlib make -j4
+AR2 = ${TCPATH}ranlib make
 
 
 INCLUDES = $(KERNELHEADERS) $(DRMHEADERS)
