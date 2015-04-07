@@ -121,7 +121,7 @@ struct instance {
 		unsigned int crtc_id;
 #ifdef DRM
 		struct drm_exynos_gem_create gem[MAX_BUFS];
-		struct drm_exynos_gem_mmap mmap[MAX_BUFS];
+		struct drm_mode_map_dumb mmap[MAX_BUFS];
 		drmModeRes *resources;
 #endif
 		char enabled;

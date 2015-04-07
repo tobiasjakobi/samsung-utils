@@ -47,6 +47,9 @@ int drm_open(struct instance *i, char *name)
 	unsigned int fb_id;
 	int ret;
 	int n;
+	struct drm_mode_map_dumb arg;
+	void *map = NULL;
+
 
 	i->drm.fd =drmOpen(name, NULL);
 	if (i->drm.fd < 0) {
@@ -87,22 +90,23 @@ int drm_open(struct instance *i, char *name)
 				return -1;
 			}
 		} else {
-			i->drm.mmap[n].handle = i->drm.gem[n].handle;
-			i->drm.mmap[n].size = i->drm.gem[n].size;
-			ret = ioctl(i->drm.fd, DRM_IOCTL_EXYNOS_GEM_MMAP, &i->drm.mmap[n]);
+			memset(&arg, 0, sizeof(&arg));
+			arg.handle = i->drm.gem[n].handle;
+			ret = ioctl(i->drm.fd, DRM_IOCTL_MODE_MAP_DUMB, &arg);
 			if (ret < 0) {
 				ioctl(i->drm.fd, DRM_IOCTL_GEM_CLOSE, &args);
 				err("Failed to mmap gem");
 				return -1;
 			}
-			i->drm.p[n] = (char *)(unsigned int)i->drm.mmap[n].mapped;
-			i->fimc.p[n] = (char *)(unsigned int)i->drm.mmap[n].mapped;
+			i->drm.mmap[n].offset = arg.offset;
+			i->drm.p[n] = (char *)(unsigned int)map;
+			i->fimc.p[n] = (char *)(unsigned int)map;
+			map = mmap(0, i->drm.gem[n].size, PROT_READ | PROT_WRITE, MAP_SHARED,i->drm.fd, i->drm.mmap[n].offset);
 		}
 		ret = drmModeAddFB(i->drm.fd, i->drm.width, i->drm.height, 32,
 			32, 4 *  i->drm.width, i->drm.gem[n].handle, &fb_id);
 		if (ret) {
-			munmap((void *)(unsigned long)i->drm.mmap[n].mapped,
-							i->drm.gem[n].size);
+			munmap((void *)(unsigned long)map,i->drm.gem[n].size);
 			ioctl(i->drm.fd, DRM_IOCTL_GEM_CLOSE, &args);
 			err("Failed to add fb");
 			return -1;
