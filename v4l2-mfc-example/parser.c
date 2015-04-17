@@ -4,7 +4,7 @@
  *
  * Really simple stream parser file
  *
- * Copyright 2012 Samsung Electronics Co., Ltd.
+ * Copyright 2012 - 2015 Samsung Electronics Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -334,6 +334,7 @@ int parse_h264_stream(
 
 	if (ctx->got_start) {
 		if (out_size < frame_length) {
+			printf("out_size: %i frame_length: %i\n", out_size, frame_length);
 			err("Output buffer too small for current frame");
 			return 0;
 		}

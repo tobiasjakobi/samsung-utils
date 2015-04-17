@@ -4,7 +4,7 @@
  *
  * Main file of the application
  *
- * Copyright 2012 Samsung Electronics Co., Ltd.
+ * Copyright 2012 - 2015 Samsung Electronics Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -439,7 +439,7 @@ int main(int argc, char **argv)
 
 	printf("V4L2 Codec decoding example application\n");
 	printf("Kamil Debski <k.debski@samsung.com>\n");
-	printf("Copyright 2012-2014 Samsung Electronics Co., Ltd.\n\n");
+	printf("Copyright 2012-2015 Samsung Electronics Co., Ltd.\n\n");
 
 	if (parse_args(&inst, argc, argv)) {
 		print_usage(argv[0]);
@@ -459,7 +459,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (inst.drm.enabled && drm_open(&inst, inst.drm.name)) {
+	if (inst.drm.enabled && drm_open(&inst)) {
 		cleanup(&inst);
 		return 1;
 	}

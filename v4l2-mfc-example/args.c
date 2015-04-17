@@ -4,7 +4,7 @@
  *
  * Argument parser
  *
- * Copyright 2012 Samsung Electronics Co., Ltd.
+ * Copyright 2012 - 2015 Samsung Electronics Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,10 +25,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <linux/videodev2.h>
+#include <sys/ioctl.h>
+#include <glob.h>
+#include <fcntl.h>
 
 #include "common.h"
 #include "parser.h"
-
 
 void print_usage(char *name)
 {
@@ -41,6 +43,7 @@ void print_usage(char *name)
 	printf("\t-f <device> - FIMC device (e.g. /dev/video4)\n");
 	printf("\t-i <file> - Input file name\n");
 	printf("\t-m <device> - MFC device (e.g. /dev/video8)\n");
+	printf("\t-A Autodetect mode \n");
 	printf("\t-D <module>:<crtc>:<conn> - DRM module (e.g. exynos:4:17)\n");
 	printf("\t-B - use DMABUF instead of userptr for sharing buffers\n");
 	printf("\t-V - synchronise to vsync\n");
@@ -50,6 +53,70 @@ void print_usage(char *name)
 	printf("\tOnly one of the following Frame Buffer, DRM can be used at a time.\n");
 	printf("\n");
 }
+
+static int read_file(char const *name, char *buf, int len)
+{
+	int fd;
+	int ret;
+
+	fd = open(name, O_RDONLY);
+	if (fd < 0)
+		return fd;
+	ret = read(fd, buf, len);
+	if (ret > 0 && ret < len)
+		buf[buf[ret - 1] == '\n' ? ret - 1 : ret] = 0;
+	close(fd);
+
+	return ret >= 0 ? 0 : ret;
+}
+
+int detect_video(struct instance *i)
+{
+	char buf[256];
+	glob_t gb;
+	int ret, g, ndigits;
+	static char dev_prefix[] = "/dev/video";
+
+	ret = glob("/sys/class/video4linux/video*/name", 0, NULL, &gb);
+	if (ret != 0)
+		return ret;
+
+	for (g = 0; g < gb.gl_pathc; ++g) {
+		ret = read_file(gb.gl_pathv[g], buf, sizeof buf);
+		if (ret != 0)
+			goto finish;
+		printf("Name:\t\t '%s'\n", buf);
+
+		if (!strcmp("fimc.0.m2m", buf)) {
+			i->fimc.name=(char *) malloc(100);
+			strcpy(i->fimc.name, dev_prefix);
+			ndigits = strlen(gb.gl_pathv[g]) - sizeof "/sys/class/video4linux/video/name" + 1;
+			strncat(i->fimc.name, gb.gl_pathv[g] + sizeof "/sys/class/video4linux/video" - 1, ndigits);
+			printf("Name:\t\t '%s'\n", i->fimc.name);
+		}
+		if (!strcmp("s5p-mfc-dec", buf)) {
+			i->mfc.name=(char *) malloc(100);
+			strcpy(i->mfc.name, dev_prefix);
+			ndigits = strlen(gb.gl_pathv[g]) - sizeof "/sys/class/video4linux/video/name" + 1;
+			strncat(i->mfc.name, gb.gl_pathv[g] + sizeof "/sys/class/video4linux/video" - 1, ndigits);
+			printf("Name:\t\t '%s'\n", i->mfc.name);
+		}
+	}
+
+	if (g == gb.gl_pathc) {
+		ret = -1;
+		goto finish;
+	}
+
+finish:
+	globfree(&gb);
+	return ret;
+
+
+}
+
+
+
 
 void init_to_defaults(struct instance *i)
 {
@@ -81,7 +148,7 @@ int parse_args(struct instance *i, int argc, char **argv)
 
 	init_to_defaults(i);
 
-	while ((c = getopt(argc, argv, "c:d:f:i:m:VXD:B")) != -1) {
+	while ((c = getopt(argc, argv, "c:d:f:i:m:VXAD:B")) != -1) {
 		switch (c) {
 		case 'c':
 			i->parser.codec = get_codec(optarg);
@@ -108,6 +175,13 @@ int parse_args(struct instance *i, int argc, char **argv)
 			break;
 		case 'B':
 			i->fimc.dmabuf = 1;
+			break;
+		case 'A':
+			detect_video(i);
+			i->drm.autodetect = 1;
+			i->drm.enabled = 1;
+			i->fimc.dmabuf = 1;
+			i->fimc.enabled = 1;
 			break;
 		case 'D':
 			/* Name */

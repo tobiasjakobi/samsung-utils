@@ -4,7 +4,7 @@
  *
  * Common stuff header file
  *
- * Copyright 2012 Samsung Electronics Co., Ltd.
+ * Copyright 2012 - 2015 Samsung Electronics Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -117,6 +117,7 @@ struct instance {
 
 		char *p[MAX_BUFS];
 
+		unsigned int autodetect;
 		unsigned int conn_id;
 		unsigned int crtc_id;
 #ifdef DRM

@@ -4,7 +4,7 @@
  *
  * DRM operations header file
  *
- * Copyright 2014 Samsung Electronics Co., Ltd.
+ * Copyright 2014 - 2015 Samsung Electronics Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,9 +26,21 @@
 #ifdef DRM
 
 /* Open and mmap DRM buffer. Also read its properties */
-int	drm_open(struct instance *i, char *name);
+int	drm_open(struct instance *i);
 /* Unmap and close the buffer */
 void	drm_close(struct instance *i);
+
+struct connector {
+	uint32_t id;
+	char mode_str[64];
+	drmModeModeInfo *mode;
+	drmModeEncoder *encoder;
+	int crtc;
+	unsigned int fb_id[2], current_fb_id;
+	struct timeval start;
+
+	int swap_count;
+};
 
 #endif /* DRM */
 
