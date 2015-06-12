@@ -23,12 +23,17 @@
 #ifndef INCLUDE_DRM_H
 #define INCLUDE_DRM_H
 
+#include <drm/drm_fourcc.h>
+#include <linux/videodev2.h>
+
 #ifdef DRM
 
 /* Open and mmap DRM buffer. Also read its properties */
 int	drm_open(struct instance *i);
 /* Unmap and close the buffer */
 void	drm_close(struct instance *i);
+extern int exynos_drm_ipp_init(struct instance *i);
+void exynos_drm_ipp_close(struct instance *inst);
 
 struct connector {
 	uint32_t id;
@@ -41,6 +46,8 @@ struct connector {
 
 	int swap_count;
 };
+
+
 
 #endif /* DRM */
 
