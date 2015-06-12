@@ -39,6 +39,6 @@ int exynos_drm_ipp_setup_output_from_mfc(struct instance *i);
 /* Send command to stop ctrl and then clean up buffors and memory */
 int exynos_drm_ipp_dec_queue_buf_out_from_mfc(struct instance *inst, int n);
 /* Send command to stop ctrl and then clean up buffors and memory */
-void exynos_drm_ipp_close(struct instance *inst)
+void exynos_drm_ipp_close(struct instance *inst);
 #endif /* INCLUDE_IPP_H */
 

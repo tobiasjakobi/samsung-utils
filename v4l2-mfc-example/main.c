@@ -34,6 +34,7 @@
 #include "mfc.h"
 #include "parser.h"
 #include "drm.h"
+#include "ipp.h"
 
 /* This is the size of the buffer for the compressed stream.
  * It limits the maximum compressed frame size. */
@@ -209,12 +210,16 @@ void *mfc_thread_func(void *args)
 		if (i->mfc.cap_buf_queued < i->mfc.cap_buf_cnt_min) {
 			/* sem_wait - wait until there is a buffer returned from
 			 * fimc */
-			if (i->fimc.enabled) {
+			if (i->ipp.enabled) {
+				dbg("Before ipp.done");
+				sem_wait(&i->ipp.done);
+				dbg("After ipp.done");
+			}
+			else if (i->fimc.enabled) {
 				dbg("Before fimc.done");
 				sem_wait(&i->fimc.done);
 				dbg("After fimc.done");
 			}
-
 			n = 0;
 			while (n < i->mfc.cap_buf_cnt &&
 				i->mfc.cap_buf_flag[n] != BUF_FREE)
@@ -243,12 +248,16 @@ void *mfc_thread_func(void *args)
 			if (n < i->mfc.cap_buf_cnt) {
 				/* sem_wait - we already found a buffer to queue
 				 * so no waiting */
-				if (i->fimc.enabled) {
+				if (i->ipp.enabled) {
+					dbg("Before ipp.done");
+					sem_wait(&i->ipp.done);
+					dbg("After ipp.done");
+				}
+				else if (i->fimc.enabled) {
 					dbg("Before fimc.done");
 					sem_wait(&i->fimc.done);
 					dbg("After fimc.done");
 				}
-
 				/* Can queue a buffer */
 				mfc_dec_queue_buf_cap(i, n);
 				i->mfc.cap_buf_flag[n] = BUF_MFC;
@@ -270,8 +279,17 @@ void *mfc_thread_func(void *args)
 				i->finish = 1;
 				break;
 			}
+			if (i->ipp.enabled) {
+				i->mfc.cap_buf_flag[n] = BUF_FIMC;
+				i->mfc.cap_buf_queued--;
+				queue_add(&i->ipp.queue, n);
+				sem_post(&i->ipp.todo);
+				dbg("Add IPP queue");
 
-			if (i->fimc.enabled) {
+				continue;
+			}
+
+			else if (i->fimc.enabled) {
 				/* Pass to the FIMC */
 				i->mfc.cap_buf_flag[n] = BUF_FIMC;
 				i->mfc.cap_buf_queued--;
@@ -282,7 +300,6 @@ void *mfc_thread_func(void *args)
 				i->mfc.cap_buf_flag[n] = BUF_FREE;
 				i->mfc.cap_buf_queued--;
 			}
-
 			continue;
 		}
 	}
@@ -342,7 +359,6 @@ void *fimc_thread_func(void *args)
 			i->error = 1;
 			break;
 		}
-
 
 		if (first_run) {
 			/* Since our fabulous V4L2 framework enforces that at
@@ -429,13 +445,82 @@ void *fimc_thread_func(void *args)
 	return 0;
 }
 
+/* This thread handles FIMC processing and optionally frame buffer
+ * switching and synchronisation to the vsync of frame buffer. */
+void *ipp_thread_func(void *args)
+{
+	static int frames = 0;
+	static int first_run = 1;
+	struct instance *i = (struct instance *)args;
+	int n;
+	fprintf(stderr,"%s:%d Enter",__func__,__LINE__);
+
+	i->ipp.cur_buf = 0;
+
+	while (!i->error && (!i->finish ||
+		(i->finish && !queue_empty(&i->ipp.queue))
+		)) {
+		dbg("Before ipp.todo");
+		sem_wait(&i->ipp.todo);
+		dbg("After ipp.todo");
+
+		dbg("Processing by IPP");
+
+		n = queue_remove(&i->ipp.queue);
+
+		if (i->mfc.cap_buf_flag[n] != BUF_FIMC) {
+			err("Buffer chosen to be processed by FIMC in wrong");
+			i->error = 1;
+			break;
+		}
+
+		if (n >= i->mfc.cap_buf_cnt) {
+			err("Strange. Could not find the buffer to process.");
+			i->error = 1;
+			break;
+		}
+		printf("%s: %d n:%d i->mfc.cap_buf_cnt:%d \n", __func__, __LINE__, n, i->mfc.cap_buf_cnt);
+
+		if (first_run) {
+			first_run = 0;
+
+			if (exynos_drm_ipp_cmd_ctrl(IPP_CTRL_PLAY, i)) {
+				i->error = 1;
+				break;
+			}
+		}
+		if (exynos_drm_ipp_process_frame(i, n)) {
+			i->error = 1;
+			break;
+		}
+ 		frames++;
+
+
+		dbg("Processed frame number: %d", frames);
+
+		if (exynos_drm_ipp_dequeue_buffors(i, i->ipp.cur_buf)) {
+			i->error = 1;
+			break;
+		}
+
+		i->mfc.cap_buf_flag[n] = BUF_FREE;
+ 
+		sem_post(&i->ipp.done);
+	}
+
+	dbg("IPP thread finished");
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	struct instance inst;
+
 	pthread_t fimc_thread;
+	pthread_t ipp_thread;
 	pthread_t mfc_thread;
 	pthread_t parser_thread;
-	int n;
+	int n,ret=0;
 
 	printf("V4L2 Codec decoding example application\n");
 	printf("Kamil Debski <k.debski@samsung.com>\n");
@@ -449,17 +534,15 @@ int main(int argc, char **argv)
 	if (queue_init(&inst.fimc.queue, MFC_MAX_CAP_BUF))
 		return 1;
 
+	if (queue_init(&inst.ipp.queue, MFC_MAX_CAP_BUF))
+		return 1;
+
 	if (input_open(&inst, inst.in.name)) {
 		cleanup(&inst);
 		return 1;
 	}
 
 	if (inst.fb.enabled && fb_open(&inst, inst.fb.name)) {
-		cleanup(&inst);
-		return 1;
-	}
-
-	if (inst.drm.enabled && drm_open(&inst)) {
 		cleanup(&inst);
 		return 1;
 	}
@@ -494,6 +577,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (inst.drm.enabled && drm_open(&inst)) {
+		cleanup(&inst);
+		return 1;
+	}
+
 	if (dequeue_output(&inst, &n)) {
 		cleanup(&inst);
 		return 1;
@@ -503,7 +591,6 @@ int main(int argc, char **argv)
 		cleanup(&inst);
 		return 1;
 	}
-
 	if (inst.fimc.enabled && fimc_setup_capture(&inst)) {
 		cleanup(&inst);
 		return 1;
@@ -533,16 +620,23 @@ int main(int argc, char **argv)
 		inst.mfc.cap_buf_flag[n] = BUF_MFC;
 		inst.mfc.cap_buf_queued++;
 	}
+	if (inst.ipp.enabled && exynos_drm_ipp_allocate_ipp_buffers(&inst)) {
+		cleanup(&inst);
+		return 1;
+	}
+
+	if(ret)
+		fprintf(stderr,"%s: %d",__func__,__LINE__);
 
 	if (mfc_stream(&inst, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 							VIDIOC_STREAMON)) {
 		cleanup(&inst);
 		return 1;
 	}
-
 	sem_init(&inst.fimc.todo, 0, 0);
 	sem_init(&inst.fimc.done, 0, 0);
-
+	sem_init(&inst.ipp.todo, 0, 0);
+	sem_init(&inst.ipp.done, 0, 0);
 	/* Now we're safe to run the threads */
 	dbg("Launching threads");
 
@@ -556,7 +650,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (inst.fimc.enabled &&  pthread_create(&fimc_thread, NULL, fimc_thread_func, &inst)) {
+	if (inst.ipp.enabled &&  pthread_create(&ipp_thread, NULL, ipp_thread_func, &inst)) {
+		cleanup(&inst);
+		return 1;
+	}
+	else if (inst.fimc.enabled &&  pthread_create(&fimc_thread, NULL, fimc_thread_func, &inst)) {
 		cleanup(&inst);
 		return 1;
 	}
@@ -564,7 +662,9 @@ int main(int argc, char **argv)
 
 	pthread_join(parser_thread, 0);
 	pthread_join(mfc_thread, 0);
-	if (inst.fimc.enabled)
+	if (inst.ipp.enabled)
+		pthread_join(ipp_thread, 0);
+	else if (inst.fimc.enabled)
 		pthread_join(fimc_thread, 0);
 
 	dbg("Threads have finished");
