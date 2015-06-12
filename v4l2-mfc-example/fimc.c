@@ -31,6 +31,10 @@
 #include "common.h"
 #include "fimc.h"
 
+#include <errno.h>
+#include <drm/drm_fourcc.h>
+
+
 static char *dbg_type[2] = {"OUTPUT", "CAPTURE"};
 static char *dbg_status[2] = {"ON", "OFF"};
 
@@ -234,11 +238,11 @@ int fimc_stream(struct instance *i, enum v4l2_buf_type type, int status)
 	return 0;
 }
 
-int fimc_dec_queue_buf_out_from_mfc(struct instance *i, int n)
+int fimc_dec_queue_buf_out_from_mfc(struct instance *inst, int n)
 {
 	struct v4l2_buffer buf;
 	struct v4l2_plane planes[MFC_CAP_PLANES];
-	int ret;
+	int ret,p;
 
 	memzero(buf);
 	memzero(planes);
@@ -247,23 +251,23 @@ int fimc_dec_queue_buf_out_from_mfc(struct instance *i, int n)
 	buf.m.planes = planes;
 	buf.length = MFC_CAP_PLANES;
 
-	buf.m.planes[0].bytesused = i->mfc.cap_buf_size[0];
-	buf.m.planes[0].length = i->mfc.cap_buf_size[0];
-
-	buf.m.planes[1].bytesused = i->mfc.cap_buf_size[1];
-	buf.m.planes[1].length = i->mfc.cap_buf_size[1];
-
-	if (i->fimc.dmabuf) {
+	if (inst->fimc.dmabuf) {
 		buf.memory = V4L2_MEMORY_DMABUF;
-		buf.m.planes[0].m.fd = i->mfc.dbuf[n][0];
-		buf.m.planes[1].m.fd = i->mfc.dbuf[n][1];
 	} else {
 		buf.memory = V4L2_MEMORY_USERPTR;
-		buf.m.planes[0].m.userptr = (unsigned long)i->mfc.cap_buf_addr[n][0];
-		buf.m.planes[1].m.userptr = (unsigned long)i->mfc.cap_buf_addr[n][1];
 	}
 
-	ret = ioctl(i->fimc.fd, VIDIOC_QBUF, &buf);
+	for(p = 0; p < 2; p++) {
+		buf.m.planes[p].bytesused = inst->mfc.cap_buf_size[p];
+		buf.m.planes[p].length = inst->mfc.cap_buf_size[p];
+
+		if (inst->fimc.dmabuf) {
+			buf.m.planes[p].m.fd = inst->mfc.dbuf[n][p];
+		} else {
+			buf.m.planes[p].m.userptr = (unsigned long)inst->mfc.cap_buf_addr[n][p];
+		}
+	}
+	ret = ioctl(inst->fimc.fd, VIDIOC_QBUF, &buf);
 
 	if (ret) {
 		err("Failed to queue buffer (index=%d) on CAPTURE", n);
