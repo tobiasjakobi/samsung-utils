@@ -178,8 +178,8 @@ int parse_args(struct instance *i, int argc, char **argv)
 			detect_video(i);
 			i->drm.autodetect = 1;
 			i->drm.enabled = 1;
+			i->ipp.enabled = 1;
 			i->fimc.dmabuf = 1;
-			i->fimc.enabled = 1;
 			break;
 		case 'D':
 			/* Name */
