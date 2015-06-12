@@ -48,7 +48,7 @@ INCLUDES = $(KERNELHEADERS) $(DRMHEADERS)
 
 #-I$(TARGETROOT)/usr/include/linux
 
-SOURCES = main.c fileops.c args.c parser.c fb.c fimc.c mfc.c queue.c drm.c
+SOURCES = main.c fileops.c args.c parser.c fb.c fimc.c mfc.c queue.c drm.c gem.c
 OBJECTS := $(SOURCES:.c=.o)
 EXEC = v4l2_decode
 CFLAGS = -Wall -g -DS5PC1XX_FIMC -lm
