@@ -42,7 +42,9 @@
 #ifdef DRM
 #include <xf86drm.h>
 #include <xf86drmMode.h>
-#include <exynos_drm.h>
+#include <drm/exynos_drm.h>
+#include <drm/drm_fourcc.h>
+#include <linux/videodev2.h>
 #endif
 
 #ifdef ADD_DETAILS
@@ -94,6 +96,27 @@
  * to be processed by FIMC. */
 #define BUF_FIMC 2
 
+#define INVALID_GEM_HANDLE  ~0U
+
+#define DRM_IPP_MAX_BUF		3
+#define DRM_IPP_MAX_PLANES	3
+
+struct drm_buff {
+	unsigned int 	index;
+	unsigned int 	handle[DRM_IPP_MAX_PLANES];
+	int		fd[DRM_IPP_MAX_PLANES];
+	unsigned int	fb_id;
+};
+
+struct shared_buffer {
+	unsigned int		index;
+	unsigned int		width;
+	unsigned int		height;
+	unsigned int		num_planes;
+	struct v4l2_plane	planes[DRM_IPP_MAX_PLANES];
+	unsigned int		handle[DRM_IPP_MAX_PLANES];
+};
+
 struct instance {
 	/* Input file related parameters */
 	struct {
@@ -122,7 +145,10 @@ struct instance {
 		unsigned int crtc_id;
 #ifdef DRM
 		struct drm_exynos_gem_create gem[MAX_BUFS];
+		struct drm_exynos_gem_create gem_src[MFC_MAX_CAP_BUF];
 		struct drm_mode_map_dumb mmap[MAX_BUFS];
+		struct drm_prime_handle prime[MAX_BUFS];
+
 		drmModeRes *resources;
 #endif
 		char enabled;
@@ -170,7 +196,17 @@ struct instance {
 		int dmabuf;
 		char ignore_format_change;
 	} fimc;
-
+	struct drm_ipp {
+		int enabled;
+		struct drm_exynos_ipp_queue_buf *queue_buf;
+		struct drm_exynos_ipp_property prop;
+		struct queue queue;
+		sem_t todo;
+		sem_t done;
+		int cur_buf;
+		struct drm_exynos_ipp_queue_buf *src_buff[DRM_IPP_MAX_BUF];
+		struct drm_exynos_ipp_queue_buf *dst_buff[DRM_IPP_MAX_BUF];
+	} ipp;
 	/* MFC related parameters */
 	struct {
 		char *name;
@@ -182,7 +218,6 @@ struct instance {
 		int out_buf_off[MFC_MAX_OUT_BUF];
 		char *out_buf_addr[MFC_MAX_OUT_BUF];
 		int out_buf_flag[MFC_MAX_OUT_BUF];
-
 		/* Capture queue related */
 		int cap_w;
 		int cap_h;

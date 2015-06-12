@@ -57,6 +57,7 @@ char * res##_str(int type) {			\
 #include <xf86drmMode.h>
 #include <drm/exynos_drm.h>
 #include "gem.h"
+#include "ipp.h"
 
 struct type_name encoder_type_names[] = {
 	{ DRM_MODE_ENCODER_NONE, "none" },
