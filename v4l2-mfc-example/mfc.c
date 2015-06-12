@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "common.h"
 #include "mfc.h"
@@ -74,7 +75,6 @@ void mfc_close(struct instance *i)
 {
 	close(i->mfc.fd);
 }
-
 
 int mfc_dec_setup_output(struct instance *i, unsigned long codec,
 						unsigned int size, int count)
@@ -251,7 +251,7 @@ int mfc_dec_setup_capture(struct instance *i, int extra_buf)
 	struct v4l2_crop crop;
 	struct v4l2_exportbuffer expbuf;
 	int ret;
-	int n;
+	int n,d;
 
 	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	ret = ioctl(i->mfc.fd, VIDIOC_G_FMT, &fmt);
@@ -328,43 +328,28 @@ int mfc_dec_setup_capture(struct instance *i, int extra_buf)
 			return -1;
 		}
 
-		if (i->fimc.dmabuf) {
-			memset(&expbuf, 0, sizeof(expbuf));
-			expbuf.index = n;
-			expbuf.plane = 0;
-			expbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-			ret = ioctl(i->mfc.fd, VIDIOC_EXPBUF, &expbuf);
-			if (ret != 0) {
-				err("Failed to export buffer\n");
-				return -1;
-			}
-			i->mfc.dbuf[n][0] = expbuf.fd;
+		for(d=0; d<2;d++) {
+			if (i->fimc.dmabuf) {
+				memset(&expbuf, 0, sizeof(expbuf));
+				expbuf.index = n;
+				expbuf.plane = d;
+				expbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+				ret = ioctl(i->mfc.fd, VIDIOC_EXPBUF, &expbuf);
+				if (ret != 0) {
+					err("Failed to export buffer\n");
+					return -1;
+				}
+				i->mfc.dbuf[n][d] = expbuf.fd;
+			} else {
+				i->mfc.cap_buf_off[n][d] = buf.m.planes[d].m.mem_offset;
+				i->mfc.cap_buf_addr[n][d] = mmap(NULL, buf.m.planes[d].length,
+							PROT_READ | PROT_WRITE, MAP_SHARED,
+							i->mfc.fd, buf.m.planes[d].m.mem_offset);
 
-			memset(&expbuf, 0, sizeof(expbuf));
-			expbuf.index = n;
-			expbuf.plane = 1;
-			expbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-			ret = ioctl(i->mfc.fd, VIDIOC_EXPBUF, &expbuf);
-			if (ret != 0) {
-				err("Failed to export buffer\n");
-				return -1;
-			}
-			i->mfc.dbuf[n][1] = expbuf.fd;
-		} else {
-			i->mfc.cap_buf_off[n][0] = buf.m.planes[0].m.mem_offset;
-			i->mfc.cap_buf_off[n][1] = buf.m.planes[1].m.mem_offset;
-
-			i->mfc.cap_buf_addr[n][0] = mmap(NULL, buf.m.planes[0].length,
-						PROT_READ | PROT_WRITE, MAP_SHARED,
-						i->mfc.fd, buf.m.planes[0].m.mem_offset);
-			i->mfc.cap_buf_addr[n][1] = mmap(NULL, buf.m.planes[1].length,
-						PROT_READ | PROT_WRITE, MAP_SHARED,
-						i->mfc.fd, buf.m.planes[1].m.mem_offset);
-
-			if (i->mfc.cap_buf_addr[n][0] == MAP_FAILED ||
-				i->mfc.cap_buf_addr[n][1] == MAP_FAILED) {
-				err("Failed to MMAP MFC CAPTURE buffer");
-				return -1;
+				if (i->mfc.cap_buf_addr[n][d] == MAP_FAILED) {
+					err("Failed to MMAP MFC CAPTURE buffer");
+					return -1;
+				}
 			}
 		}
 	}
