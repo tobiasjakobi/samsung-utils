@@ -246,8 +246,8 @@ int drm_open(struct instance *i)
  */
 void drm_close(struct instance *i)
 {
-	drmClose(i->drm.fd);
 	exynos_drm_ipp_close(i);
+	drmClose(i->drm.fd);
 }
 /*
  * Requise instance to get drm file descriptor and put data to struct

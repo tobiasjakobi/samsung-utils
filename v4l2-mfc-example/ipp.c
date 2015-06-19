@@ -221,14 +221,12 @@ void exynos_drm_ipp_close(struct instance *inst)
         gem_close.handle = inst->drm.gem_src[i].handle;
         exynos_gem_close(inst->drm.fd, &gem_close);
     }
-    for (i = 0; i < DRM_IPP_MAX_BUF; ++i)
-        exynos_drm_ipp_do_buffer(i, IPP_BUF_DEQUEUE, EXYNOS_DRM_OPS_DST,inst);
     for (i = 0; i < MAX_BUFS; ++i) {
-        exynos_drm_ipp_do_buffer(i, IPP_BUF_DEQUEUE, EXYNOS_DRM_OPS_DST,inst);
         gem_close.handle = inst->drm.gem[i].handle;
         exynos_gem_close(inst->drm.fd, &gem_close);
+	drmModeRmFB(inst->drm.fd, inst->drm.fb[i]);
     }
-    drmModeRmFB(inst->drm.fd, (uint32_t)inst->drm.fb);
+    dbg("Exynos DRM IPP closed\n");
 
     close(inst->drm.fd);
 }
