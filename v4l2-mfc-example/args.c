@@ -45,7 +45,9 @@ void print_usage(char *name)
 	printf("\t-f <device> - FIMC device (e.g. /dev/video4)\n");
 	printf("\t-i <file> - Input file name\n");
 	printf("\t-m <device> - MFC device (e.g. /dev/video8)\n");
-	printf("\t-A Autodetect mode \n");
+	printf("\t-I Use DRM IPP (without autodetect)\n");
+	printf("\t-E Use DRM IPP (with autodetect)\n");
+	printf("\t-A Autodetect mode (DRM only)\n");
 	printf("\t-D <module>:<crtc>:<conn> - DRM module (e.g. exynos:4:17)\n");
 	printf("\t-B - use DMABUF instead of userptr for sharing buffers\n");
 	printf("\t-V - synchronise to vsync\n");
@@ -71,7 +73,9 @@ static int read_file(char const *name, char *buf, int len)
 
 	return ret >= 0 ? 0 : ret;
 }
-
+/*
+ * TODO: Detect all fimc.*.m2m not only 0
+ */
 int detect_video(struct instance *i)
 {
 	char buf[256];
@@ -89,7 +93,7 @@ int detect_video(struct instance *i)
 			goto finish;
 		printf("Name:\t\t '%s'\n", buf);
 
-		if (!strcmp("fimc.0.m2m", buf)) {
+		if (!strcmp("fimc.0.m2m", buf) && i->fimc.enabled ) {
 		i->fimc.name=(char *) malloc(100);
 		strcpy(i->fimc.name, dev_prefix);
 		ndigits = strlen(gb.gl_pathv[g]) - sizeof "/sys/class/video4linux/video/name" + 1;
@@ -146,7 +150,7 @@ int parse_args(struct instance *i, int argc, char **argv)
 
 	init_to_defaults(i);
 
-	while ((c = getopt(argc, argv, "c:d:f:i:m:VXAD:B")) != -1) {
+	while ((c = getopt(argc, argv, "c:d:f:i:m:VXAIED:B")) != -1) {
 		switch (c) {
 		case 'c':
 			i->parser.codec = get_codec(optarg);
@@ -171,14 +175,15 @@ int parse_args(struct instance *i, int argc, char **argv)
 		case 'X':
 			i->fimc.ignore_format_change = 1;
 			break;
-		case 'B':
-			i->fimc.dmabuf = 1;
-			break;
 		case 'A':
-			detect_video(i);
 			i->drm.autodetect = 1;
 			i->drm.enabled = 1;
-			i->ipp.enabled = 1;
+			i->fimc.dmabuf = 1;
+			i->fimc.enabled = 1;
+			i->ipp.enabled = 0;
+			detect_video(i);
+			break;
+		case 'B':
 			i->fimc.dmabuf = 1;
 			break;
 		case 'D':
@@ -212,6 +217,21 @@ int parse_args(struct instance *i, int argc, char **argv)
 			dbg("conn: %d (%s)", i->drm.conn_id, optarg);
 			i->drm.enabled = 1;
 			break;
+		case 'E':
+			i->drm.autodetect = 1;
+			i->drm.enabled = 1;
+			i->fimc.dmabuf = 1;
+			i->ipp.enabled = 1;
+			i->fimc.enabled = 0;
+			detect_video(i);
+			break;
+		case 'I':
+			i->fimc.dmabuf = 1;
+			i->ipp.enabled = 1;
+			i->drm.enabled = 1;
+			i->fimc.enabled = 0;
+			break;
+
 		default:
 			err("Bad argument");
 			return -1;
