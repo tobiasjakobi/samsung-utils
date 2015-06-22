@@ -27,6 +27,7 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "common.h"
 #include "fimc.h"
@@ -38,14 +39,15 @@
 static char *dbg_type[2] = {"OUTPUT", "CAPTURE"};
 static char *dbg_status[2] = {"ON", "OFF"};
 
-int fimc_open(struct instance *i, char *name)
+int fimc_open(struct instance *i)
 {
 	struct v4l2_capability cap;
 	int ret;
 
-	i->fimc.fd = open(name, O_RDWR, 0);
+	i->fimc.fd = open(i->fimc.name, O_RDWR, 0);
 	if (i->fimc.fd < 0) {
-		err("Failed to open FIMC: %s", name);
+		err("Failed to open FIMC: %s", i->fimc.name);
+		free(i->fimc.name);
 		return -1;
 	}
 
@@ -57,16 +59,19 @@ int fimc_open(struct instance *i, char *name)
 	}
 
 	dbg("FIMC Info (%s): driver=\"%s\" bus_info=\"%s\" card=\"%s\" fd=0x%x",
-			name, cap.driver, cap.bus_info, cap.card, i->fimc.fd);
+			i->fimc.name, cap.driver, cap.bus_info, cap.card, i->fimc.fd);
 
 	if (	!(((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE) &&
 		  (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT_MPLANE)) ||
 		  (cap.capabilities & V4L2_CAP_VIDEO_M2M_MPLANE)) ||
 		!(cap.capabilities & V4L2_CAP_STREAMING)) {
 		err("Insufficient capabilities of FIMC device (is %s correct?)",
-									name);
+									i->fimc.name);
+		free(i->fimc.name);
+
 		return -1;
 	}
+	free(i->fimc.name);
 
         return 0;
 }

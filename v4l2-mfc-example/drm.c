@@ -184,7 +184,7 @@ int drm_open(struct instance *i)
 		i->drm.fb[n] = fb_id;
 	}
 
-	snprintf(mode, 32, "%dx%d", crtc->width, crtc->height);
+	snprintf(mode, 32, "%dx%d", i->drm.width , i->drm.height);
 /*
  * Use detected Connector
  */
@@ -330,6 +330,7 @@ int dump_crtcs(struct instance *i)
 	drmModeCrtc *crtc;
 	int j,ret;
 
+
 	printf("CRTCs:\n");
 	printf("id\tfb\tpos\tsize\n");
 	for (j = 0; j < i->drm.resources->count_crtcs; j++) {
@@ -348,7 +349,6 @@ int dump_crtcs(struct instance *i)
 			crtc->width, crtc->height);
 		drmModeFreeCrtc(crtc);
 	}
-	printf("%i %i \n",crtc->crtc_id, ret);
 	return ret;
 }
 

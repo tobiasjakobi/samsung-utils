@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #include "common.h"
 #include "mfc.h"
@@ -36,14 +37,15 @@
 static char *dbg_type[2] = {"OUTPUT", "CAPTURE"};
 static char *dbg_status[2] = {"ON", "OFF"};
 
-int mfc_open(struct instance *i, char *name)
+int mfc_open(struct instance *i)
 {
 	struct v4l2_capability cap;
 	int ret;
 
-	i->mfc.fd = open(name, O_RDWR, 0);
+	i->mfc.fd = open(i->mfc.name, O_RDWR, 0);
 	if (i->mfc.fd < 0) {
-		err("Failed to open MFC: %s", name);
+		err("Failed to open MFC: %s", i->mfc.name);
+		free(i->mfc.name);
 		return -1;
 	}
 
@@ -51,21 +53,23 @@ int mfc_open(struct instance *i, char *name)
 	ret = ioctl(i->mfc.fd, VIDIOC_QUERYCAP, &cap);
 	if (ret != 0) {
 		err("Failed to verify capabilities");
+		free(i->mfc.name);
 		return -1;
 	}
 
 	dbg("MFC Info (%s): driver=\"%s\" bus_info=\"%s\" card=\"%s\" fd=0x%x",
-			name, cap.driver, cap.bus_info, cap.card, i->mfc.fd);
+			i->mfc.name, cap.driver, cap.bus_info, cap.card, i->mfc.fd);
 
 	if (	!(((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE) &&
 		  (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT_MPLANE)) ||
 		  (cap.capabilities & V4L2_CAP_VIDEO_M2M_MPLANE)) ||
 		!(cap.capabilities & V4L2_CAP_STREAMING)) {
 		err("Insufficient capabilities of MFC device (is %s correct?)",
-									name);
+									i->mfc.name);
+		free(i->mfc.name);
 		return -1;
 	}
-
+	free(i->mfc.name);
         return 0;
 }
 
@@ -253,6 +257,7 @@ int mfc_dec_setup_capture(struct instance *i, int extra_buf)
 	int ret;
 	int n,d;
 
+	memzero(fmt);
 	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	ret = ioctl(i->mfc.fd, VIDIOC_G_FMT, &fmt);
 	if (ret) {
@@ -265,7 +270,7 @@ int mfc_dec_setup_capture(struct instance *i, int extra_buf)
 
 	i->mfc.cap_buf_size[0] = fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
 	i->mfc.cap_buf_size[1] = fmt.fmt.pix_mp.plane_fmt[1].sizeimage;
-
+	memzero(ctrl);
 	ctrl.id = V4L2_CID_MIN_BUFFERS_FOR_CAPTURE;
 	ret = ioctl(i->mfc.fd, VIDIOC_G_CTRL, &ctrl);
 	if (ret) {

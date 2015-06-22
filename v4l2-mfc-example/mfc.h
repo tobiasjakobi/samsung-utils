@@ -26,7 +26,7 @@
 #include "common.h"
 
 /* Open the MFC device */
-int	mfc_open(struct instance *i, char *name);
+int	mfc_open(struct instance *i);
 /* Close the MFC devices */
 void	mfc_close(struct instance *i);
 /* Setup the OUTPUT queue. The size determines the size for the stream

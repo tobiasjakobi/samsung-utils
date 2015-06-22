@@ -126,6 +126,9 @@ int dequeue_capture(struct instance *i, int *n, int *finished)
 	struct v4l2_plane planes[MFC_CAP_PLANES];
 
 	memzero(qbuf);
+	memzero(planes[0]);
+	memzero(planes[1]);
+
 	qbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	qbuf.memory = V4L2_MEMORY_MMAP;
 	qbuf.m.planes = planes;
@@ -526,6 +529,7 @@ int main(int argc, char **argv)
 	printf("Kamil Debski <k.debski@samsung.com>\n");
 	printf("Copyright 2012-2015 Samsung Electronics Co., Ltd.\n\n");
 
+	memzero(inst);
 	if (parse_args(&inst, argc, argv)) {
 		print_usage(argv[0]);
 		return 1;
@@ -547,12 +551,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (inst.fimc.enabled && fimc_open(&inst, inst.fimc.name)) {
+	if (inst.fimc.enabled && fimc_open(&inst)) {
 		cleanup(&inst);
 		return 1;
 	}
 
-	if (mfc_open(&inst, inst.mfc.name)) {
+	if (mfc_open(&inst)) {
 		cleanup(&inst);
 		return 1;
 	}

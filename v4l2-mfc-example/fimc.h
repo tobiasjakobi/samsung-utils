@@ -26,7 +26,7 @@
 #include "common.h"
 
 /* Open the FIMC device */
-int	fimc_open(struct instance *i, char *name);
+int	fimc_open(struct instance *i);
 /* Close the FIMC device */
 void	fimc_close(struct instance *i);
 /* Set format in FIMC */
