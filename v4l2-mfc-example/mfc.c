@@ -170,6 +170,8 @@ int mfc_dec_queue_buf(struct instance *i, int n, int l1, int l2, int type,
 	qbuf.index = n;
 	qbuf.m.planes = planes;
 	qbuf.length = nplanes;
+	qbuf.m.planes[0].data_offset = 0;
+	qbuf.m.planes[1].data_offset = 0;
 	qbuf.m.planes[0].bytesused = l1;
 	qbuf.m.planes[1].bytesused = l2;
 
@@ -213,8 +215,9 @@ int mfc_dec_queue_buf_cap(struct instance *i, int n)
 int mfc_dec_dequeue_buf(struct instance *i, struct v4l2_buffer *qbuf)
 {
 	int ret;
-
+	dbg("Preparing ioctl VIDIOC_DQBUF");
 	ret = ioctl(i->mfc.fd, VIDIOC_DQBUF, qbuf);
+	dbg("Done ioctl VIDIOC_DQBUF");
 
 	if (ret) {
 		err("Failed to dequeue buffer");
