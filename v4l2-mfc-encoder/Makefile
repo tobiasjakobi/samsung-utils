@@ -16,9 +16,13 @@
 # limitations under the License.
 #
 
+ifeq ($(KERNELHEADERS_PREFIX),)
+$(warning KERNELHEADERS_PREFIX is not set, the build may fail due to lack of kernel headers)
+endif
+
 # Toolchain path
 TCPATH = arm-linux-gnueabi-
-KERNELHEADERS = /home/kamil/praca/w1-party/kernel/headers/include
+KERNELHEADERS = -I$(KERNELHEADERS_PREFIX)
 
 CC = ${TCPATH}gcc
 AR = "${TCPATH}ar rc"
@@ -30,7 +34,7 @@ INCLUDES = -I$(KERNELHEADERS)
 SOURCES = main.c args.c in_demo.c out_file.c mfc.c io_dev.c func_dev.c v4l_dev.c in_camera.c
 OBJECTS := $(SOURCES:.c=.o)
 EXEC = mfc-encode
-CFLAGS = -Wall -g -DS5PC1XX_FIMC
+CFLAGS = -Wall -g
 DEP = .dep
 
 all: $(EXEC) $(DEP)

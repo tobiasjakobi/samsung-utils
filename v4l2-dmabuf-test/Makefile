@@ -1,8 +1,11 @@
+ifeq ($(KERNELHEADERS_PREFIX),)
+$(warning KERNELHEADERS_PREFIX is not set, the build may fail due to lack of kernel headers)
+endif
+
 CROSS_COMPILE ?= arm-linux-gnueabi-
-KDIR ?= /usr/src/linux
 CC=$(CROSS_COMPILE)gcc
 OBJS = v4l2-dbuf
-CFLAGS += -I$(KDIR)/usr/include -std=gnu99 -Wall -pedantic -O2
+CFLAGS += -I$(KERNELHEADERS_PREFIX)/include -std=gnu99 -Wall -O2
 
 all:  $(OBJS)
 

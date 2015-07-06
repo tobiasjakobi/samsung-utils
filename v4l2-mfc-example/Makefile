@@ -27,19 +27,18 @@ $(warning KERNELHEADERS_PREFIX is not set, the build may fail due to lack of ker
 endif
 
 # Toolchain path
-TCPATH = arm-linux-gnueabi-
-#TCPATH =
-KERNELHEADERS = -I$(KERNELHEADERS_PREFIX)
-DRMHEADERS =	-I$(LIBDRM_PREFIX)/include/ \
-		-I$(LIBDRM_PREFIX)/include/libdrm/ \
+CROSS_COMPILE ?= arm-linux-gnueabi-
+KERNELHEADERS = -I$(KERNELHEADERS_PREFIX)/include
+DRMHEADERS =	-I$(LIBDRM_PREFIX)/include \
+		-I$(LIBDRM_PREFIX)/include/libdrm \
 		-I$(LIBDRM_PREFIX)/include/exynos \
 		-I./
 LIBRARIES =	-L$(LIBDRM_PREFIX)/lib/
 LIBS =		-ldrm
 
-CC = ${TCPATH}gcc
-AR = "${TCPATH}ar rc"
-AR2 = ${TCPATH}ranlib make
+CC = ${CROSS_COMPILE}gcc
+AR = "${CROSS_COMPILE}ar rc"
+AR2 = ${CROSS_COMPILE}ranlib make
 
 
 INCLUDES = $(KERNELHEADERS) $(DRMHEADERS)
@@ -51,7 +50,7 @@ INCLUDES = $(KERNELHEADERS) $(DRMHEADERS)
 SOURCES = main.c fileops.c args.c parser.c fb.c fimc.c mfc.c queue.c drm.c gem.c ipp.c
 OBJECTS := $(SOURCES:.c=.o)
 EXEC = v4l2_decode
-CFLAGS = -Wall -g -DS5PC1XX_FIMC -lm
+CFLAGS = -Wall -g -lm
 #-Os
 
 all: $(EXEC)
