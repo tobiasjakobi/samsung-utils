@@ -179,7 +179,7 @@ int v4l_deq_buf(struct io_dev *dev, enum io_dir dir)
 /* enqueue buffer, start stream when needed */
 int v4l_enq_buf(struct io_dev *dev, enum io_dir dir, int idx)
 {
-	struct v4l2_plane planes[MFC_MAX_PLANES];
+	struct v4l2_plane planes[MFC_MAX_PLANES]={};
 	struct v4l2_buffer buf;
 	int i;
 	int ret;
