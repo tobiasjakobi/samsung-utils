@@ -367,3 +367,17 @@ int mfc_dec_setup_capture(struct instance *i, int extra_buf)
 	return 0;
 }
 
+int mfc_dec_stop(struct instance *i)
+{
+	int ret;
+	struct  v4l2_decoder_cmd cmd;
+
+	memzero(cmd);
+	cmd.cmd = V4L2_ENC_CMD_STOP;
+	ret = ioctl(i->mfc.fd, VIDIOC_DECODER_CMD, &cmd);
+	if (ret != 0) {
+		err("Failed ioctl vidioc_decoder_cmd");
+		return -1;
+	}
+	return 0;
+}

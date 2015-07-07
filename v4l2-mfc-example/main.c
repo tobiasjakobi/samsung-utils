@@ -171,6 +171,8 @@ void *parser_thread_func(void *args)
 				dbg("Parser has extracted all frames");
 				i->parser.finished = 1;
 				fs = 0;
+				mfc_dec_stop(i);
+				return 0;
 			}
 
 			dbg("Extracted frame of size %d", fs);

@@ -48,6 +48,7 @@ int	mfc_dec_setup_capture(struct instance *i, int extra_buf);
 /* Dequeue a buffer, the structure *buf is used to return the parameters of the
  * dequeued buffer. */
 int	mfc_dec_dequeue_buf(struct instance *i, struct v4l2_buffer *buf);
-
+/* This function is for EOS*/
+int mfc_dec_stop(struct instance *i);
 #endif /* INCLUDE_MFC_H */
 
