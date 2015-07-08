@@ -107,6 +107,7 @@ int dequeue_output(struct instance *i, int *n)
 	struct v4l2_plane planes[MFC_OUT_PLANES];
 
 	memzero(qbuf);
+	memzero(planes[0]);
 	qbuf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	qbuf.memory = V4L2_MEMORY_MMAP;
 	qbuf.m.planes = planes;
@@ -154,6 +155,7 @@ void *parser_thread_func(void *args)
 	int ret;
 	int used, fs, n;
 
+	i->mfc.out_buf_flag[0] = 1;
 	while (!i->error && !i->finish && !i->parser.finished) {
 		n = 0;
 		while (n < i->mfc.out_buf_cnt && i->mfc.out_buf_flag[n])
@@ -588,11 +590,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (dequeue_output(&inst, &n)) {
-		cleanup(&inst);
-		return 1;
-	}
-
 	if (inst.fimc.enabled && fimc_setup_output_from_mfc(&inst)) {
 		cleanup(&inst);
 		return 1;
@@ -615,7 +612,6 @@ int main(int argc, char **argv)
 	 * is queued before switching streaming on then we need to add the
 	 * following code. Otherwise it could be ommited and it all would be
 	 * handled by the mfc_thread.*/
-
 	for (n = 0 ; n < inst.mfc.cap_buf_cnt; n++) {
 
 		if (mfc_dec_queue_buf_cap(&inst, n)) {
