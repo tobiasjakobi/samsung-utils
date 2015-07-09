@@ -32,6 +32,8 @@
 #include "common.h"
 #include "parser.h"
 
+#define O_RDONLY         00
+
 void print_usage(char *name)
 {
 	// "d:f:i:m:c:V"
