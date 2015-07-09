@@ -90,18 +90,18 @@ int detect_video(struct instance *i)
 		printf("Name:\t\t '%s'\n", buf);
 
 		if (!strcmp("fimc.0.m2m", buf)) {
-			i->fimc.name=(char *) malloc(100);
-			strcpy(i->fimc.name, dev_prefix);
-			ndigits = strlen(gb.gl_pathv[g]) - sizeof "/sys/class/video4linux/video/name" + 1;
-			strncat(i->fimc.name, gb.gl_pathv[g] + sizeof "/sys/class/video4linux/video" - 1, ndigits);
-			printf("Name:\t\t '%s'\n", i->fimc.name);
+		i->fimc.name=(char *) malloc(100);
+		strcpy(i->fimc.name, dev_prefix);
+		ndigits = strlen(gb.gl_pathv[g]) - sizeof "/sys/class/video4linux/video/name" + 1;
+		strncat(i->fimc.name, gb.gl_pathv[g] + sizeof "/sys/class/video4linux/video" - 1, ndigits);
+		printf("Name:\t\t '%s'\n", i->fimc.name);
 		}
 		if (!strcmp("s5p-mfc-dec", buf)) {
-			i->mfc.name=(char *) malloc(100);
-			strcpy(i->mfc.name, dev_prefix);
-			ndigits = strlen(gb.gl_pathv[g]) - sizeof "/sys/class/video4linux/video/name" + 1;
-			strncat(i->mfc.name, gb.gl_pathv[g] + sizeof "/sys/class/video4linux/video" - 1, ndigits);
-			printf("Name:\t\t '%s'\n", i->mfc.name);
+		i->mfc.name=(char *) malloc(100);
+		strcpy(i->mfc.name, dev_prefix);
+		ndigits = strlen(gb.gl_pathv[g]) - sizeof "/sys/class/video4linux/video/name" + 1;
+		strncat(i->mfc.name, gb.gl_pathv[g] + sizeof "/sys/class/video4linux/video" - 1, ndigits);
+		printf("Name:\t\t '%s'\n", i->mfc.name);
 		}
 	}
 
@@ -116,10 +116,6 @@ finish:
 
 
 }
-
-
-
-
 void init_to_defaults(struct instance *i)
 {
 	memset(i, 0, sizeof(*i));
