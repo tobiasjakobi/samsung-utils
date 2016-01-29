@@ -23,8 +23,12 @@
 #ifndef INCLUDE_DRM_H
 #define INCLUDE_DRM_H
 
-#include <drm/drm_fourcc.h>
 #include <linux/videodev2.h>
+
+#include <libdrm/drm.h>
+#include <libdrm/drm_mode.h>
+#include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #ifdef DRM
 

@@ -40,10 +40,13 @@
 #define DRM
 
 #ifdef DRM
+#include <libdrm/drm.h>
+#include <libdrm/drm_mode.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
-#include <drm/exynos_drm.h>
-#include <drm/drm_fourcc.h>
+
+#include <exynos/exynos_drm.h>
+#include <libdrm/drm_fourcc.h>
 #include <linux/videodev2.h>
 #endif
 
