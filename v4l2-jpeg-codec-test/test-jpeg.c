@@ -68,9 +68,13 @@
 enum pix_format {
 	FMT_JPEG,
         FMT_RGB565,
+        FMT_RGB565X,
         FMT_RGB32,
+        FMT_BGR32,
         FMT_YUYV,
         FMT_YVYU,
+        FMT_UYVY,
+        FMT_VYUY,
         FMT_NV24,
         FMT_NV42,
         FMT_NV16,
@@ -93,7 +97,8 @@ int mode = ENCODE;
 const char *input_filename;
 const char *output_filename;
 int video_node = 5;
-int width = 0, height = 0;
+int width = 0, height = 0, crop_left = 0, crop_top = 0, crop_width = 0, crop_height = 0;
+float scale_ratio = 1.0;
 int fourcc;
 
 static __u32 get_px_format_by_id(enum pix_format px_fmt)
@@ -103,12 +108,20 @@ static __u32 get_px_format_by_id(enum pix_format px_fmt)
 		return V4L2_PIX_FMT_JPEG;
 	case FMT_RGB565:
 		return V4L2_PIX_FMT_RGB565;
+	case FMT_RGB565X:
+		return V4L2_PIX_FMT_RGB565X;
 	case FMT_RGB32:
 		return V4L2_PIX_FMT_RGB32;
+	case FMT_BGR32:
+		return V4L2_PIX_FMT_BGR32;
 	case FMT_YUYV:
 		return V4L2_PIX_FMT_YUYV;
 	case FMT_YVYU:
 		return V4L2_PIX_FMT_YVYU;
+	case FMT_UYVY:
+		return V4L2_PIX_FMT_UYVY;
+	case FMT_VYUY:
+		return V4L2_PIX_FMT_VYUY;
 	case FMT_NV24:
 		return V4L2_PIX_FMT_NV24;
 	case FMT_NV42:
@@ -139,14 +152,26 @@ static void get_format_name_by_fourcc(unsigned int fourcc, char *fmt_name)
 	case V4L2_PIX_FMT_RGB565:
 		strcpy(fmt_name, "V4L2_PIX_FMT_RGB565");
 		break;
+	case V4L2_PIX_FMT_RGB565X:
+		strcpy(fmt_name, "V4L2_PIX_FMT_RGB565X");
+		break;
 	case V4L2_PIX_FMT_RGB32:
 		strcpy(fmt_name, "V4L2_PIX_FMT_RGB32");
+		break;
+	case V4L2_PIX_FMT_BGR32:
+		strcpy(fmt_name, "V4L2_PIX_FMT_BGR32");
 		break;
 	case V4L2_PIX_FMT_YUYV:
 		strcpy(fmt_name, "V4L2_PIX_FMT_YUYV");
 		break;
 	case V4L2_PIX_FMT_YVYU:
 		strcpy(fmt_name, "V4L2_PIX_FMT_YVYU");
+		break;
+	case V4L2_PIX_FMT_UYVY:
+		strcpy(fmt_name, "V4L2_PIX_FMT_UYVY");
+		break;
+	case V4L2_PIX_FMT_VYUY:
+		strcpy(fmt_name, "V4L2_PIX_FMT_VYUY");
 		break;
 	case V4L2_PIX_FMT_NV24:
 		strcpy(fmt_name, "V4L2_PIX_FMT_NV24");
@@ -280,6 +305,11 @@ void print_usage (void)
 		 "-v[VIDEO NODE NUMBER]\n"
 		 "-w[INPUT IMAGE WIDTH]\n"
 		 "-h[INPUT IMAGE HEIGHT]\n"
+		 "-l[JPEG CROP LEFT]\n"
+		 "-t[JPEG CROP TOP]\n"
+		 "-x[JPEG CROP WIDTH]\n"
+		 "-y[JPEG CROP HEIGHT]\n"
+		 "-s[SCALE RATIO]\n"
 		 "-r[COLOUR FORMAT: 1..12]\n"
 		 "-c[COMPRESSION LEVEL: 0..3]\n"
 		 "-p[CHROMA SUBSAMPLING: 0..3]\n");
@@ -290,7 +320,7 @@ static int parse_args(int argc, char *argv[])
 	int c;
 
 	opterr = 0;
-	while ((c = getopt (argc, argv, "m:f:o:v:w:h:r:c:p:")) != -1) {
+	while ((c = getopt (argc, argv, "m:f:o:v:w:h:r:s:t:c:p:l:t:x:y:")) != -1) {
 		debug("c: %c, optarg: %s\n", c, optarg);
 		switch (c) {
 		case 'm':
@@ -311,6 +341,9 @@ static int parse_args(int argc, char *argv[])
 		case 'h':
 			height = atoi(optarg);
 			break;
+		case 's':
+			scale_ratio = atof(optarg);
+			break;
 		case 'r':
 			fourcc = atoi(optarg);
 			break;
@@ -319,6 +352,18 @@ static int parse_args(int argc, char *argv[])
 			break;
 		case 'p':
 			subsampling = atoi(optarg);
+			break;
+		case 'l':
+			crop_left = atoi(optarg);
+			break;
+		case 't':
+			crop_top = atoi(optarg);
+			break;
+		case 'x':
+			crop_width = atoi(optarg);
+			break;
+		case 'y':
+			crop_height = atoi(optarg);
 			break;
 		case '?':
 			print_usage ();
@@ -438,6 +483,27 @@ int main(int argc, char *argv[])
 		width = fmt.fmt.pix.width;
 		height = fmt.fmt.pix.height;
 		printf("input JPEG dimensions: %dx%d\n", width, height);
+
+		/* apply scaling */
+		struct v4l2_selection sel = {
+			.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+			.target = V4L2_SEL_TGT_COMPOSE_BOUNDS,
+		};
+		struct v4l2_rect r;
+
+		ret = ioctl(vid_fd, VIDIOC_G_SELECTION, &sel);
+		perror_exit(ret != 0, "ioctl");
+
+		r.width = width * scale_ratio;
+		r.height = height * scale_ratio;
+		r.left = 0;
+		r.top = 0;
+		sel.r = r;
+		sel.target = V4L2_SEL_TGT_COMPOSE;
+		sel.flags = V4L2_SEL_FLAG_LE;
+		ret = ioctl(vid_fd, VIDIOC_S_SELECTION, &sel);
+		if (ret)
+			printf("jpeg scaling failed\n");
 	}
 
 	/* set output format */
@@ -484,6 +550,26 @@ int main(int argc, char *argv[])
 
 		ret = ioctl (vid_fd, VIDIOC_S_EXT_CTRLS, &ctrls);
 		perror_exit (ret != 0, "VIDIOC_S_CTRL v4l2_ioctl");
+
+		/* apply cropping */
+		struct v4l2_selection sel = {
+			.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+			.target = V4L2_SEL_TGT_CROP_BOUNDS,
+		};
+		struct v4l2_rect r;
+
+		r.width = crop_width > 0 ? crop_width : width;
+		r.height = crop_height > 0 ? crop_height : height;
+		r.left = crop_left;
+		r.top = crop_top;
+		sel.r = r;
+		sel.target = V4L2_SEL_TGT_CROP;
+		sel.flags = V4L2_SEL_FLAG_LE;
+		ret = ioctl(vid_fd, VIDIOC_S_SELECTION, &sel);
+		if (ret)
+			printf("raw image cropping failed\n");
+		else
+			printf("cropped rectangle: %dx%d\n", sel.r.width, sel.r.height);
 	}
 
 	/* request output buffer */
@@ -544,6 +630,16 @@ int main(int argc, char *argv[])
 
 		get_subsampling_by_id(ctrl.value, subs_name);
 		printf("decoded JPEG subsampling: %s\n", subs_name);
+
+		/* get active area of decoded image */
+		struct v4l2_selection sel = {
+			.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+			.target = V4L2_SEL_TGT_COMPOSE_BOUNDS,
+		};
+
+		ret = ioctl(vid_fd, VIDIOC_G_SELECTION, &sel);
+		perror_exit(ret != 0, "ioctl");
+		printf("active area dimensions: %dx%d\n", sel.r.width, sel.r.height);
 	}
 
 	/* generate output file */
