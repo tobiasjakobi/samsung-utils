@@ -665,11 +665,7 @@ int main(int argc, char *argv[])
 	int out_fd = open(output_filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
 	printf("Generating output file...\n");
-	char x;
-	for (i = 0; i < capture_buffer_sz; ++i) {
-		x = p_dst_buf[i];
-		write(out_fd, (const void * )&x, 1);
-	}
+	write(out_fd, p_dst_buf, capture_buffer_sz);
 	close(out_fd);
 
 	printf("Output file: %s, size: %d\n", output_filename, capture_buffer_sz);
