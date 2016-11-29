@@ -32,6 +32,10 @@
 #include <linux/fb.h>
 #include <linux/videodev2.h>
 
+#ifndef V4L2_CAP_VIDEO_M2M
+#define V4L2_CAP_VIDEO_M2M              0x00008000
+#endif
+
 #include <sys/mman.h>
 
 #define VIDEO_DEV_NAME	"/dev/video"
@@ -410,13 +414,24 @@ int main(int argc, char *argv[])
 	ret = ioctl(vid_fd, VIDIOC_QUERYCAP, &cap);
 	perror_exit(ret != 0, "ioctl");
 
-	if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
-		fprintf(stderr, "Device does not support capture\n");
-		exit(EXIT_FAILURE);
-	}
-	if (!(cap.capabilities & V4L2_CAP_VIDEO_OUTPUT)) {
-		fprintf(stderr, "Device does not support output\n");
-		exit(EXIT_FAILURE);
+
+	if (cap.device_caps | V4L2_CAP_DEVICE_CAPS) {
+		if (!(cap.device_caps & V4L2_CAP_VIDEO_M2M)) {
+			fprintf(stderr, "Device %s does not support mem-to-mem (%#x)\n",
+				video_node_name, cap.device_caps);
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
+			fprintf(stderr, "Device %s does not support capture (%#x)\n",
+				video_node_name, cap.capabilities);
+			exit(EXIT_FAILURE);
+		}
+		if (!(cap.capabilities & V4L2_CAP_VIDEO_OUTPUT)) {
+			fprintf(stderr, "Device %s does not support output (%#x)\n",
+				video_node_name, cap.capabilities);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	/* set input format */
