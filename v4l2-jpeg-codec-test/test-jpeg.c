@@ -389,14 +389,14 @@ int main(int argc, char *argv[])
 {
 	int i, r, input_fd;
 	int ret = 0;
-	struct v4l2_buffer buf;
-	struct v4l2_requestbuffers reqbuf;
+	struct v4l2_buffer buf = {0};
+	struct v4l2_requestbuffers reqbuf = {0};
 	enum v4l2_buf_type type;
 	fd_set read_fds;
 	char *def_outfile = "out.file";
 
-	struct v4l2_capability cap;
-	struct v4l2_format fmt;
+	struct v4l2_capability cap = {0};
+	struct v4l2_format fmt = {0};
 	char video_node_name[20];
 
 	ret = parse_args(argc, argv);
@@ -482,6 +482,7 @@ int main(int argc, char *argv[])
 	buf.type	= V4L2_BUF_TYPE_VIDEO_OUTPUT;
 	buf.memory	= V4L2_MEMORY_MMAP;
 	buf.index	= 0;
+	buf.bytesused	= input_file_sz;
 
 	ret = ioctl(vid_fd, VIDIOC_QBUF, &buf);
 	perror_exit(ret != 0, "ioctl");
