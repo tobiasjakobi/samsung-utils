@@ -69,7 +69,7 @@ int mfc_open(struct instance *i)
 		free(i->mfc.name);
 		return -1;
 	}
-	free(i->mfc.name);
+	//free(i->mfc.name);
         return 0;
 }
 
