@@ -16,54 +16,48 @@
 # limitations under the License.
 #
 
+optflags := -O2 -march=armv7-a -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard
+compiler := gcc
+cflags   := -Wall -I/usr/include/libdrm -I/usr/include/exynos
+ldflags  := -lm -pthread -ldrm
+destdir  := /usr/local
 
-
-ifeq ($(LIBDRM_PREFIX),)
-$(warning LIBDRM_PREFIX is not set, the build may fail due to lack of libdrm headers )
+ifndef platform
+platform := $(shell $(compiler) -dumpmachine)
 endif
 
-ifeq ($(KERNELHEADERS_PREFIX),)
-$(warning KERNELHEADERS_PREFIX is not set, the build may fail due to lack of kernel headers)
+ifeq (release-lto,$(build))
+cflags += $(optflags) -flto=4 -fuse-linker-plugin -DNDEBUG
+ldflags += $(optflags) -flto=4 -fuse-linker-plugin
 endif
 
-# Toolchain path
-CROSS_COMPILE ?= arm-linux-gnueabi-
-KERNELHEADERS = -I$(KERNELHEADERS_PREFIX)/include
-DRMHEADERS =	-I$(LIBDRM_PREFIX)/include \
-		-I$(LIBDRM_PREFIX)/include/libdrm \
-		-I$(LIBDRM_PREFIX)/include/exynos \
-		-I./
-LIBRARIES =	-L$(LIBDRM_PREFIX)/lib/
-LIBS =		-ldrm
+ifeq (release,$(build))
+cflags += $(optflags) -DNDEBUG
+endif
 
-CC = ${CROSS_COMPILE}gcc
-AR = "${CROSS_COMPILE}ar rc"
-AR2 = ${CROSS_COMPILE}ranlib make
+ifeq (debug,$(build))
+cflags += -O0 -g
+endif
 
+ifneq (,$(DESTDIR))
+destdir := $(DESTDIR)
+endif
 
-INCLUDES = $(KERNELHEADERS) $(DRMHEADERS)
+objects := v4l2_decode
 
-#INCLUDES = -I$(KERNELHEADERS)/include
+all: $(objects)
 
-#-I$(TARGETROOT)/usr/include/linux
+%.o: %.c
+	$(compiler) -c -o $@ $(cflags) $<
 
-SOURCES = main.c fileops.c args.c parser.c fb.c fimc.c mfc.c queue.c drm.c gem.c ipp.c
-OBJECTS := $(SOURCES:.c=.o)
-EXEC = v4l2_decode
-CFLAGS = -Wall -g -lm
-#-Os
-
-all: $(EXEC)
-
-.c.o:
-	$(CC) -c $(CFLAGS) $(INCLUDES) $<
-
-$(EXEC): $(OBJECTS)
-	$(CC) $(CFLAGS) -o $(EXEC) $(OBJECTS) $(LIBRARIES) $(LIBS) -pthread
+v4l2_decode: main.o fileops.o args.o parser.o fb.o fimc.o mfc.o queue.o drm.o gem.o ipp.o; $(compiler) -o $@ $^ $(ldflags)
 
 clean:
-	rm -f *.o $(EXEC)
+	rm -f *.o
+	rm -f $(objects)
 
-install:
+strip:
+	strip -s $(objects)
 
-.PHONY: clean all
+install: v4l2_decode
+	cp v4l2_decode $(destdir)/bin/
