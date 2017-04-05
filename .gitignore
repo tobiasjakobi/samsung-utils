@@ -1,0 +1,4 @@
+v4l2-mfc-example/*.o
+v4l2-mfc-example/v4l2_decode
+v4l2-mfc-drm-direct/*.o
+v4l2-mfc-drm-direct/v4l2_direct
